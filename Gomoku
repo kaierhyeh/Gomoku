@@ -1,0 +1,2 @@
+#!/bin/bash
+cd "/home/kyeh/5eyes/src" && python3 main.py "$@"
