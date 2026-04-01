@@ -7,10 +7,19 @@ BOARD_SIZE = 19          # 19x19 Go board
 EMPTY = 0
 BLACK = 1                # Human player (default) or AI
 WHITE = 2                # AI (default) or second human
+HOLE = 3                 # Star mode hole
 
 # Win conditions
 WIN_LENGTH = 5           # Five or more in a row to win
 MAX_CAPTURES = 5         # 5 captured pairs (10 stones) = win
+
+# Game Modes
+MODE_STANDARD = "Standard"
+MODE_DECAY    = "Decay"
+MODE_POWER    = "Power"
+MODE_STAR     = "Star"
+MODE_LIMITLESS = "Standard Unlimited"
+MODE_EVERYTHING = "Everything"
 
 # ──────────────────────────────────────────────
 # GUI constants
@@ -31,11 +40,23 @@ COLOR_TEXT       = (230, 220, 200)
 COLOR_ACCENT     = (200, 130, 50)
 
 # ──────────────────────────────────────────────
-# Decay Mode constants
+# Bonus Modes constants
 # ──────────────────────────────────────────────
+# Decay
 DECAY_LIFESPAN       = 20   # Total ply a stone survives (= 10 of its owner's turns)
 DECAY_WARN_THRESHOLD = 6    # Show countdown timer when ply_remaining <= this
 DECAY_CRACK_THRESHOLD = 2   # Draw crack lines when ply_remaining <= this
+
+# Power Stones
+POWER_UNLOCK_THRESHOLD = 5  # Capture 5 individual stones to gain a power
+POWER_BOMB     = "Bomb"
+POWER_CROSS    = "Cross"
+POWER_DIAGONAL = "Diagonal"
+
+# Shooting Star
+STAR_MIN_PLY = 5
+STAR_MAX_PLY = 12
+STAR_WARN_PLY = 3           # Show forecast 3 ply before hole forms
 
 # ──────────────────────────────────────────────
 AI_TIME_LIMIT    = 0.45   # Maximum seconds per move (hard cap)

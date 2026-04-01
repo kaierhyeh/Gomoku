@@ -23,37 +23,35 @@ all: install
 	@chmod +x $(NAME)
 
 install:
-	@printf "$(RESET_LINE)$(BLUE)→ Checking dependencies$(GREY)"
+	@printf "$(RESET_LINE)$(BLUE)→ Loading dependencies [██        ] 20%%$(GREY)"
 	@sleep 0.1
-	@printf "$(RESET_LINE)$(BLUE)→ Checking dependencies.$(GREY)"
+	@printf "$(RESET_LINE)$(BLUE)→ Loading dependencies [████      ] 40%%$(GREY)"
 	@sleep 0.1
-	@printf "$(RESET_LINE)$(BLUE)→ Checking dependencies..$(GREY)"
+	@printf "$(RESET_LINE)$(BLUE)→ Loading dependencies [██████    ] 60%%$(GREY)"
 	@sleep 0.1
-	@printf "$(RESET_LINE)$(BLUE)→ Checking dependencies...$(GREY)"
+	@printf "$(RESET_LINE)$(BLUE)→ Loading dependencies [████████  ] 80%%$(GREY)"
+	@sleep 0.1
+	@printf "$(RESET_LINE)$(BLUE)→ Loading dependencies [██████████] 100%%$(GREY)\n"
 	@sleep 0.1
 	@$(PIP) install pygame --quiet || true
-	@printf "$(RESET_LINE)$(GREEN_LIGHT)Environment ready!$(NOCOLOR)\n"
+	@printf "$(GREEN_LIGHT)Environment ready!$(NOCOLOR)\n"
 
 clean:
-	@printf "$(RESET_LINE)$(RED_FLASH)Cleaning $(NAME) pycache/	$(GREY)"
+	@printf "$(RESET_LINE)$(RED_FLASH)Cleaning pycache [          ] 0%%$(GREY)"
 	@sleep 0.1
-	@printf "$(RESET_LINE)$(RED_FLASH)Cleaning $(NAME) pycache/.	$(GREY)"
+	@printf "$(RESET_LINE)$(RED_FLASH)Cleaning pycache [██        ] 20%%$(GREY)"
 	@sleep 0.1
-	@printf "$(RESET_LINE)$(RED_FLASH)Cleaning $(NAME) pycache/..	$(GREY)"
+	@printf "$(RESET_LINE)$(RED_FLASH)Cleaning pycache [████      ] 40%%$(GREY)"
 	@sleep 0.1
-	@printf "$(RESET_LINE)$(RED_FLASH)Cleaning $(NAME) pycache/...	$(GREY)"
+	@printf "$(RESET_LINE)$(RED_FLASH)Cleaning pycache [██████    ] 60%%$(GREY)"
 	@sleep 0.1
-	@printf "$(RESET_LINE)$(RED_FLASH)Cleaning $(NAME) pycache/	$(GREY)"
+	@printf "$(RESET_LINE)$(RED_FLASH)Cleaning pycache [████████  ] 80%%$(GREY)"
 	@sleep 0.1
-	@printf "$(RESET_LINE)$(RED_FLASH)Cleaning $(NAME) pycache/.	$(GREY)"
-	@sleep 0.1
-	@printf "$(RESET_LINE)$(RED_FLASH)Cleaning $(NAME) pycache/..	$(GREY)"
-	@sleep 0.1
-	@printf "$(RESET_LINE)$(RED_FLASH)Cleaning $(NAME) pycache/...	$(GREY)"
+	@printf "$(RESET_LINE)$(RED_FLASH)Cleaning pycache [██████████] 100%%$(GREY)\n"
 	@sleep 0.1
 	@find . -name "*.pyc" -delete
 	@find . -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
-	@printf "$(RESET_LINE)$(GREEN_LIGHT)Cleaned successfully!\n$(NOCOLOR)"
+	@printf "$(GREEN_LIGHT)Cleaned successfully!\n$(NOCOLOR)"
 
 fclean: clean
 	@printf "$(RESET_LINE)$(YELLOW)🛑 Removing $(NAME) executable...$(NOCOLOR)\n"

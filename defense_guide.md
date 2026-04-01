@@ -134,6 +134,38 @@ A move that creates **two simultaneous free-threes** is illegal.
 
 ---
 
+## 7. Emoji Validation Script
+
+Linux pygame environments (especially inside School/42 Unix environments without `Noto Color Emoji`) often struggle to render Unicode emojis. 
+
+To easily test emoji rendering at school, run the standalone script `test_emoji.py` in the root folder:
+
+```bash
+python3 test_emoji.py
+```
+
+If emojis appear correctly in the pop-up window, you can rely on the system's fonts to display mode icons properly. Otherwise, the GUI uses fallback vector-drawn shapes to ensure the UI remains fully functional.
+
+---
+
+## 8. Aide Popup (UNO / Threat)
+
+The game provides real-time threat alerts:
+
+- **UNO**: Deep red background, pale gold text. Indicates an immediate win threat.
+- **Threat**: Bright yellow-orange background, dark orange text. Indicates a strong threat (e.g., open four).
+
+**Display Location**:
+- The popup now appears at the bottom-right of the board area (not in the side panel), so it never covers the status line or suggestion messages.
+
+**Color Reference**:
+- UNO: `bg_col = (140, 20, 20)`, `txt_col = (255, 230, 180)`
+- Threat: `bg_col = (255, 220, 80)`, `txt_col = (120, 60, 0)`
+
+This ensures maximum readability and avoids overlap with other UI elements.
+
+---
+
 <br/>
 
 ---
@@ -245,3 +277,17 @@ $$\text{Board Score} = \sum \text{AI 棋型分數} - \sum \text{對手棋型分�
 4. **`ai.py`**：Minimax 搜尋、Alpha-Beta 剪枝、走法排序、漸進式深化、Transposition Table。
 5. **`gui.py`**：Pygame 事件處理、棋盤繪製、AI 計時器顯示。
 6. **`main.py`**：整合進入點，將所有模組串接。
+
+---
+
+<br/>
+
+---
+
+<br/>
+
+<p align="right">
+  <a href="#gomoku-defense-guide">
+    <img src="https://img.shields.io/badge/-TOP-sienna?style=for-the-badge" />
+  </a>
+</p>

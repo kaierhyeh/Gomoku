@@ -34,6 +34,20 @@ This project explores adversarial search, heuristic design, and the balance betw
   - **Human vs AI**: Challenge the AI.
   - **Human vs Human (Hotseat)**: Local two-player with move-suggestion feature.
 
+## 🎁 Bonus Features / Extra Scope
+
+To provide an exceptional user experience and stretch beyond the mandatory subject requirements, several bonus mechanics have been implemented:
+
+- **Undo System (悔棋)**: Press `[R]` to safely revert the last turn. In PvE, it seamlessly rewinds both the AI's and the human's moves to maintain game flow.
+- **Aide System**: A dynamic, toggleable side-panel assistant. It analyzes the board in real-time and warns you with **'Threat'** or **'UNO!'** alerts if the opponent is dangerously close to winning.
+- **Four Custom Game Modes**:
+  - **Decay (風化)**: Stones have a finite lifespan of 10 turns before they crack and vanish from the board.
+  - **Power Stones (能力石)**: Accumulate points via capturing opponent stones to unleash area-of-effect spells (Bomb, Cross, Diagonal).
+  - **Shooting Star (流星)**: Avoid random meteor strikes that permanently destroy squares on the board.
+  - **Everything (大亂鬥)**: Surviving all the above mechanics at the same time!
+- **Multi-language Support**: Real-time localization switching between English, French, and Traditional Chinese.
+- **Premium UI/UX**: Hand-drawn vector icons, lively animations, hover states, percentage loading bars, and a modern side-panel.
+
 ## 🚀 Installation & Compilation
 
 ```bash
@@ -82,6 +96,20 @@ make
 - **雙模式對局**：
   - **人類 vs AI**：挑戰 AI。
   - **人類 vs 人類 (Hotseat)**：本機雙人對戰，附建議走法功能。
+
+## 🎁 額外加分項目 (Bonus Features)
+
+為了提供滿分的體驗並超越基本的評分要求，本專案額外實作了以下高級機制：
+
+- **悔棋系統 (Undo System)**：按下 `[R]` 鍵即可安全退回上一步。在對戰 AI 模式中，系統會自動退回「雙方」的步數以保證公平性。
+- **即時戰況輔助 (Aide System)**：可自由開關的即時盤面分析。當對手即將獲勝或產生重大威脅時，系統會在畫面右側彈出 **'Threat'** 或是 **'UNO!'** 來給予玩家警告。
+- **四種全新自訂遊戲模式**：
+  - **風化模式 (Decay)**：每顆落下的棋子僅有 10 回合的壽命，隨後會產生裂痕並消失。
+  - **能力石模式 (Power Stones)**：透過一般吃子累積能量，施放十字、對角或大範圍炸彈等清盤魔法。
+  - **流星模式 (Shooting Star)**：天外隕石會隨機墜落，被砸中的網格將永遠無法落子。
+  - **大亂鬥模式 (Everything)**：同時挑戰上述所有混沌機制！
+- **多國語言支援**：即時切換英文 (EN)、法文 (FR) 與繁體中文 (ZH)。
+- **現代化 UI/UX**：拋棄傳統呆板介面，擁有自定義純手工繪製的向量圖標、現代化側邊欄、動畫以及動態讀取條。
 
 ## 🚀 安裝與編譯
 

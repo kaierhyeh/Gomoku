@@ -1,38 +1,125 @@
-from constants import BOARD_SIZE, EMPTY, BLACK, WHITE, WIN_LENGTH, MAX_CAPTURES, DECAY_LIFESPAN
+import random
+from constants import (BOARD_SIZE, EMPTY, BLACK, WHITE, HOLE, WIN_LENGTH, MAX_CAPTURES,
+                       DECAY_LIFESPAN, POWER_BOMB, POWER_CROSS, POWER_DIAGONAL,
+                       STAR_MIN_PLY, STAR_MAX_PLY, STAR_WARN_PLY)
+from bonus import RuleSet, get_rules_for_mode
 
 
 class Game:
     """Core game engine: board state, move validation, captures, win detection."""
 
-    def __init__(self):
+    def __init__(self, rules=None):
+        self.rules = rules if rules is not None else get_rules_for_mode("Standard")
         self.board = [[EMPTY] * BOARD_SIZE for _ in range(BOARD_SIZE)]
         self.captures = {BLACK: 0, WHITE: 0}  # Number of captured PAIRS per player
+        self.individual_captures = {BLACK: 0, WHITE: 0} # For Power Stones
+
         self.ply_count = 0
         self.stones_ply = {}  # Tracks (r, c) -> placed_ply
+
+        # Shooting Star fields
+        self.holes = set()
+        self.hole_forecast = {}  # (r, c) -> ply_becomes_hole
+        self.blipping_stones = {}
+        self.next_star_ply = self._schedule_next_star() if self.rules.shooting_star else -1
+
         self.current_player = BLACK
         self.winner = None
         self.last_move = None
+        self.history = []
+
+    def _save_state(self):
+        import copy
+        state = {
+            'board': [row[:] for row in self.board],
+            'captures': self.captures.copy(),
+            'individual_captures': self.individual_captures.copy(),
+            'holes': self.holes.copy(),
+            'hole_forecast': self.hole_forecast.copy(),
+            'blipping_stones': self.blipping_stones.copy(),
+            'next_star_ply': self.next_star_ply,
+            'ply_count': self.ply_count,
+            'stones_ply': self.stones_ply.copy(),
+            'current_player': self.current_player,
+            'winner': self.winner,
+            'last_move': self.last_move,
+            'decays': getattr(self, 'decays', {}).copy(),
+            'power_board': getattr(self, 'power_board', {}).copy(),
+            'power_inventory': copy.deepcopy(getattr(self, 'power_inventory', {BLACK: [], WHITE: []})),
+            'active_power': getattr(self, 'active_power', None)
+        }
+        self.history.append(state)
+
+    def undo(self):
+        if not self.history:
+            return False
+        state = self.history.pop()
+        self.board = state['board']
+        self.captures = state['captures']
+        self.individual_captures = state['individual_captures']
+        self.holes = state['holes']
+        self.hole_forecast = state['hole_forecast']
+        self.blipping_stones = state.get('blipping_stones', {})
+        self.next_star_ply = state['next_star_ply']
+        self.ply_count = state['ply_count']
+        self.stones_ply = state['stones_ply']
+        self.current_player = state['current_player']
+        self.winner = state['winner']
+        self.last_move = state['last_move']
+
+        if hasattr(self, 'decays'):
+            self.decays = state['decays']
+        if hasattr(self, 'power_board'):
+            self.power_board = state['power_board']
+            self.power_inventory = state['power_inventory']
+            self.active_power = state['active_power']
+        return True
+
+    def _schedule_next_star(self):
+        return self.ply_count + random.randint(STAR_MIN_PLY, STAR_MAX_PLY)
 
     # ──────────────────────────────────────────────
     # Move execution
     # ──────────────────────────────────────────────
 
-    def place_stone(self, row, col, player=None):
-        """Place a stone after validating the move. Returns True on success."""
+    def place_stone(self, row, col, player=None, power_type=None):
+        """Place a stone. power_type is one of POWER_* constants if used."""
         if player is None:
             player = self.current_player
+
         if not self.is_valid_move(row, col, player):
             return False
-        self.board[row][col] = player
-        self.last_move = (row, col)
-        self.stones_ply[(row, col)] = self.ply_count
-        self._apply_captures(row, col, player)
+
+        # Do not save history for AI simulations (which use clone without history tracking)
+        if hasattr(self, 'history'):
+            self._save_state()
+
+        if (row, col) in self.holes:
+            self.holes.remove((row, col))
+            self.board[row][col] = EMPTY
+            self.last_move = (row, col)
+        else:
+            self.board[row][col] = player
+            self.last_move = (row, col)
+            if self.rules.decay_enabled:
+                self.stones_ply[(row, col)] = self.ply_count
+
+            if power_type and self.rules.power_stones:
+                self._apply_power(row, col, player, power_type)
+            else:
+                self._apply_captures(row, col, player)
+
         self.winner = self._check_winner(row, col, player)
-        
+
         self.ply_count += 1
-        if not self.winner:
+
+        # Shooting star updates
+        if self.rules.shooting_star and not self.winner:
+            self._update_shooting_star()
+
+        if self.rules.decay_enabled and not self.winner:
             self._apply_decay()
-            
+
         self.current_player = WHITE if player == BLACK else BLACK
         return True
 
@@ -42,9 +129,11 @@ class Game:
             player = self.current_player
         if not (0 <= row < BOARD_SIZE and 0 <= col < BOARD_SIZE):
             return False
-        if self.board[row][col] != EMPTY:
+        if self.rules.shooting_star and (row, col) in self.holes:
+            pass # Allowed to fill an active hole!
+        elif self.board[row][col] != EMPTY or (row, col) in self.holes or (row, col) in self.hole_forecast:
             return False
-        if self._is_double_free_three(row, col, player):
+        if self.rules.double_free_three and self._is_double_free_three(row, col, player):
             return False
         return True
 
@@ -69,17 +158,109 @@ class Game:
                         and self.board[r3][c3] == player):
                     self.board[r1][c1] = EMPTY
                     self.board[r2][c2] = EMPTY
-                    self.stones_ply.pop((r1, c1), None)
-                    self.stones_ply.pop((r2, c2), None)
+                    if self.rules.decay_enabled:
+                        self.stones_ply.pop((r1, c1), None)
+                        self.stones_ply.pop((r2, c2), None)
                     self.captures[player] += 1
+                    # Normal captures grant power points (1 stone = 1 point)
+                    self.individual_captures[player] += 2
 
     def get_captures(self, player):
         """Return the number of captured pairs for a player."""
         return self.captures[player]
 
     # ──────────────────────────────────────────────
-    # Decay logic
+    # Power Stone logic
     # ──────────────────────────────────────────────
+
+    def _apply_power(self, row, col, player, power_type):
+        """Applies the area-of-effect power stone logic."""
+        opponent = WHITE if player == BLACK else BLACK
+        cleared_stones = []
+
+        # Deduct 3 points for using a skill
+        if player in self.individual_captures:
+            self.individual_captures[player] = max(0, self.individual_captures[player] - 3)
+
+        if power_type == POWER_BOMB:
+            for dr in [-1, 0, 1]:
+                for dc in [-1, 0, 1]:
+                    if dr == 0 and dc == 0: continue
+                    r, c = row + dr, col + dc
+                    if self._in_bounds(r, c) and self.board[r][c] != EMPTY:
+                        cleared_stones.append((r, c))
+
+        elif power_type == POWER_CROSS:
+            for d in [-2, -1, 1, 2]:
+                r1, c1 = row + d, col
+                if self._in_bounds(r1, c1) and self.board[r1][c1] == opponent:
+                    cleared_stones.append((r1, c1))
+                r2, c2 = row, col + d
+                if self._in_bounds(r2, c2) and self.board[r2][c2] == opponent:
+                    cleared_stones.append((r2, c2))
+
+        elif power_type == POWER_DIAGONAL:
+            for d in [-2, -1, 1, 2]:
+                r1, c1 = row + d, col + d
+                if self._in_bounds(r1, c1) and self.board[r1][c1] == opponent:
+                    cleared_stones.append((r1, c1))
+                r2, c2 = row + d, col - d
+                if self._in_bounds(r2, c2) and self.board[r2][c2] == opponent:
+                    cleared_stones.append((r2, c2))
+
+        for r, c in cleared_stones:
+            self.board[r][c] = EMPTY
+            # NOTE: Stones destroyed by powers do NOT grant individual_captures
+            if self.rules.decay_enabled and (r, c) in self.stones_ply:
+                self.stones_ply.pop((r, c), None)
+
+        # Deduct power usage
+        if self.individual_captures[player] >= 5:
+            self.individual_captures[player] = max(0, self.individual_captures[player] - 5)
+
+    # ──────────────────────────────────────────────
+    # Decay & Shooting Star logic
+    # ──────────────────────────────────────────────
+
+    def _update_shooting_star(self):
+        """Handle hole forecast, creation, and blipping stone logic."""
+        # Flip blipping stones every 3 plies relative to their origin
+        for (br, bc), start_ply in self.blipping_stones.items():
+            if self.board[br][bc] in (BLACK, WHITE) and (self.ply_count - start_ply) > 0 and (self.ply_count - start_ply) % 3 == 0:
+                self.board[br][bc] = WHITE if self.board[br][bc] == BLACK else BLACK
+                # Flipped blipping stone behaves like a fresh stone placement for capture checks.
+                self._apply_captures(br, bc, self.board[br][bc])
+
+        # Check for holes that manifest this ply
+        to_manifest = [pos for pos, ply in self.hole_forecast.items() if self.ply_count >= ply]
+        for r, c in to_manifest:
+            # 50% chance to be a Hole, 50% chance to be a Blipping Stone
+            if random.random() < 0.5:
+                self.holes.add((r, c))
+                self.board[r][c] = HOLE  # Use HOLE so it's not EMPTY for sequences
+            else:
+                color = random.choice([BLACK, WHITE])
+                self.blipping_stones[(r, c)] = self.ply_count
+                self.board[r][c] = color
+
+            if self.rules.decay_enabled:
+                self.stones_ply.pop((r, c), None)
+            del self.hole_forecast[(r, c)]
+
+        # Check if we need to schedule a new hole forecast
+        if self.ply_count >= self.next_star_ply - STAR_WARN_PLY:
+            # Generate a new hole location
+            empty_cells = []
+            for r in range(BOARD_SIZE):
+                for c in range(BOARD_SIZE):
+                    if (r, c) not in self.holes and (r, c) not in self.hole_forecast and self.board[r][c] == EMPTY:
+                        empty_cells.append((r, c))
+
+            if empty_cells:
+                r, c = random.choice(empty_cells)
+                # Next star ply is when the hole becomes active
+                self.hole_forecast[(r, c)] = self.next_star_ply
+                self.next_star_ply = self._schedule_next_star()
 
     def _apply_decay(self):
         """Remove stones that have exceeded their DECAY_LIFESPAN."""
@@ -87,7 +268,7 @@ class Game:
         for pos, placed_ply in self.stones_ply.items():
             if self.ply_count - placed_ply >= DECAY_LIFESPAN:
                 expired.append(pos)
-        
+
         for r, c in expired:
             self.board[r][c] = EMPTY
             del self.stones_ply[(r, c)]
@@ -234,7 +415,10 @@ class Game:
     # ──────────────────────────────────────────────
 
     def _in_bounds(self, row, col):
-        return 0 <= row < BOARD_SIZE and 0 <= col < BOARD_SIZE
+        return 0 <= row < BOARD_SIZE and 0 <= col < BOARD_SIZE and (row, col) not in self.holes
+
+    def is_hole(self, row, col):
+        return (row, col) in self.holes
 
     def get_board(self):
         return self.board
@@ -245,8 +429,16 @@ class Game:
     def clone(self):
         """Return a deep copy of the game state for AI simulation."""
         new_game = Game.__new__(Game)
+        new_game.rules = self.rules
         new_game.board = [row[:] for row in self.board]
         new_game.captures = self.captures.copy()
+        new_game.individual_captures = self.individual_captures.copy()
+
+        new_game.holes = self.holes.copy()
+        new_game.hole_forecast = self.hole_forecast.copy()
+        new_game.blipping_stones = self.blipping_stones.copy()
+        new_game.next_star_ply = self.next_star_ply
+
         new_game.ply_count = self.ply_count
         new_game.stones_ply = self.stones_ply.copy()
         new_game.current_player = self.current_player

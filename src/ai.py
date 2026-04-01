@@ -30,15 +30,17 @@ class AI:
             (r, c, color): rng.getrandbits(64)
             for r in range(BOARD_SIZE)
             for c in range(BOARD_SIZE)
-            for color in (BLACK, WHITE)
+            for color in (1, 2, 3, 4, 5)
         }
 
     def _compute_hash(self, board):
         h = 0
         for r in range(BOARD_SIZE):
             for c in range(BOARD_SIZE):
-                if board[r][c] != EMPTY:
-                    h ^= self.zobrist_table[(r, c, board[r][c])]
+                v = board[r][c]
+                if v != EMPTY:
+                    # Use .get() to avoid KeyErrors if non-standard elements are on the board
+                    h ^= self.zobrist_table.get((r, c, v), 0)
         return h
 
     # ──────────────────────────────────────────────

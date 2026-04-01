@@ -3,11 +3,12 @@ import pygame.gfxdraw
 import sys
 import os
 import i18n
-from constants import (BOARD_SIZE, EMPTY, BLACK, WHITE, CELL_SIZE, BOARD_MARGIN,
+from constants import (BOARD_SIZE, EMPTY, BLACK, WHITE, HOLE, CELL_SIZE, BOARD_MARGIN,
                        WINDOW_WIDTH, WINDOW_HEIGHT, COLOR_BG, COLOR_LINE,
                        COLOR_BLACK_STONE, COLOR_WHITE_STONE,
                        COLOR_PANEL_BG, COLOR_TEXT, COLOR_ACCENT,
-                       DECAY_LIFESPAN, DECAY_WARN_THRESHOLD, DECAY_CRACK_THRESHOLD)
+                       DECAY_LIFESPAN, DECAY_WARN_THRESHOLD, DECAY_CRACK_THRESHOLD,
+                       POWER_BOMB, POWER_CROSS, POWER_DIAGONAL, STAR_WARN_PLY)
 
 PANEL_X_DEFAULT = BOARD_MARGIN + CELL_SIZE * (BOARD_SIZE - 1) + BOARD_MARGIN
 
@@ -20,7 +21,9 @@ def _load_font(size, bold=False):
     Load a font that supports CJK characters (needed for Traditional Chinese).
     Tries common paths on Ubuntu/WSL, falls back to pygame default.
     """
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     cjk_paths = [
+        os.path.join(base_dir, "assets", "fonts", "NotoSansTC-Regular.otf"),
         "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
         "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
         "/usr/share/fonts/opentype/noto/NotoSansCJKsc-Regular.otf",
@@ -30,9 +33,8 @@ def _load_font(size, bold=False):
         if os.path.exists(path):
             try:
                 f = pygame.font.Font(path, size)
-                if bold:
-                    # Pygame doesn't support bold for file fonts directly; simulate with SysFont
-                    return pygame.font.SysFont("dejavusans", size, bold=True)
+                # Pygame file-based fonts do not support bold easily without rendering issues,
+                # but we MUST return the CJK font to support Chinese characters.
                 return f
             except Exception:
                 pass
@@ -55,9 +57,13 @@ class GUI:
         self._panel_x   = PANEL_X_DEFAULT
         self.hover_pos  = None
         self.status_msg = ""
+        self.aide_msg = ""
+        self.aide_timer = 0
+
         # Clickable rects — pre-populated with empty defaults so first-frame clicks are safe
         self._lang_rects = {lang: pygame.Rect(0, 0, 0, 0) for lang in i18n.LANGS}
         self._menu_rect  = pygame.Rect(0, 0, 0, 0)
+        self._aide_rect = pygame.Rect(0, 0, 0, 0)
 
     # ──────────────────────────────────────────────
     # Fonts
@@ -67,8 +73,8 @@ class GUI:
         scale = min(self.win_w / WINDOW_WIDTH, self.win_h / WINDOW_HEIGHT)
         # Larger base sizes than before (user feedback: fonts too small)
         self.font_title = _load_font(max(16, int(28 * scale)), bold=True)
-        self.font_med   = _load_font(max(12, int(20 * scale)))
-        self.font_small = _load_font(max(10, int(15 * scale)))
+        self.font_med   = _load_font(max(12, int(20 * scale)), bold=True)
+        self.font_small = _load_font(max(10, int(15 * scale)), bold=True)
 
     def handle_resize(self, new_w, new_h):
         self.win_w = max(new_w, 600)
@@ -118,10 +124,10 @@ class GUI:
             hl_col = (255, 255, 255, 100)
             glint  = (255, 255, 255, 190)
         else:
-            base   = (245, 240, 228)
-            rim    = (185, 168, 140)   # warm tan, NOT grey
-            hl_col = (255, 255, 255, 130)
-            glint  = (255, 255, 255, 220)
+            base   = (240, 242, 245)
+            rim    = (200, 200, 200)
+            hl_col = (255, 255, 255, 180) # Stronger white glow
+            glint  = (255, 255, 255, 255)
 
         # Drop shadow — MUST be strictly inside the stone's footprint.
         # With offset (ox, oy), shad_r <= radius - max(ox, oy) guarantees full coverage.
@@ -141,48 +147,58 @@ class GUI:
         if radius > 8:
             pygame.gfxdraw.aacircle(surface, cx, cy, radius - 1, rim)
 
-        # Specular oval (upper-left)
-        hl_r = max(2, radius // 3)
-        hl   = pygame.Surface((hl_r * 4, hl_r * 3), pygame.SRCALPHA)
-        pygame.gfxdraw.filled_ellipse(hl, hl_r * 2, hl_r, hl_r * 2, hl_r, hl_col)
-        surface.blit(hl, (cx - radius // 3 - hl_r * 2,
-                          cy - radius // 3 - hl_r))
-
-        # Micro glint
-        gr = max(1, radius // 8)
-        pygame.gfxdraw.filled_circle(surface,
-                                     cx - radius // 4, cy - radius // 4, gr, glint)
+        # Soft Specular Highlight (Soft glow upper-left)
+        hl_r = int(radius * 0.4)
+        if is_black:
+            pygame.gfxdraw.filled_circle(surface, cx - int(radius * 0.3), cy - int(radius * 0.3), hl_r, (255, 255, 255, 45))
+            # No micro glint for black stones (match white style)
+        else:
+            # Drop the strip, just an inner soft gradient feel
+            pygame.gfxdraw.filled_circle(surface, cx - int(radius * 0.2), cy - int(radius * 0.2), hl_r, (255, 255, 255, 180))
+            # Micro glint (core brightness)
+            gr = max(1, radius // 8)
+            pygame.gfxdraw.filled_circle(surface, cx - int(radius * 0.35), cy - int(radius * 0.35), gr, (255, 255, 255, 240))
 
         # Decay visuals
         if cracked and radius >= 6:
             self._draw_cracks(surface, cx, cy, radius, is_black)
         if age_label and radius >= 9:
-            col = (200, 80, 80) if is_black else (150, 50, 50)
+            col_txt = (255, 60, 60) if is_black else (220, 30, 30)
             try:
-                fnt = pygame.font.SysFont("dejavusans", max(8, radius - 4), bold=True)
-                ts  = fnt.render(age_label, True, col)
-                surface.blit(ts, ts.get_rect(center=(cx, cy + radius // 4)))
+                # Enlarged font for visibility
+                fnt = pygame.font.SysFont("dejavusans", max(16, int(radius * 1.3)), bold=True)
+                ts  = fnt.render(age_label, True, col_txt)
+                surface.blit(ts, ts.get_rect(center=(cx, cy + radius // 6)))
             except Exception:
                 pass
 
     def _draw_cracks(self, surface, cx, cy, radius, is_black):
-        """Draw deterministic radiating crack lines for a dying stone."""
-        import math
-        col = (130, 70, 70) if is_black else (100, 60, 40)
-        angles = [(cx * 7 + cy * 13 + i * 67) % 360 for i in range(4)]
-        for a in angles:
-            rad = math.radians(a)
-            x1  = cx + int(radius * 0.15 * math.cos(rad))
-            y1  = cy + int(radius * 0.15 * math.sin(rad))
-            x2  = cx + int(radius * 0.82 * math.cos(rad))
-            y2  = cy + int(radius * 0.82 * math.sin(rad))
-            pygame.draw.line(surface, col, (x1, y1), (x2, y2), 1)
+        """Draw a single grey thunder/lightning crack on one corner."""
+        col = (110, 110, 110) if is_black else (140, 140, 140)
+
+        # Tapering crack from top-right down to center
+        # Creates a thick top right origin snapping inward to thinner cracks
+        thick = max(2, radius // 4)
+        pts = [
+            (cx + int(radius * 0.6), cy - int(radius * 0.6)),
+            (cx + int(radius * 0.6) + thick, cy - int(radius * 0.6)),
+            (cx + int(radius * 0.3) + thick//2, cy - int(radius * 0.1)),
+            (cx + int(radius * 0.4), cy + int(radius * 0.2)),
+            (cx - int(radius * 0.1), cy + int(radius * 0.5)),
+            (cx + int(radius * 0.3), cy - int(radius * 0.1))
+        ]
+        pygame.draw.polygon(surface, col, pts)
+
+        # Small branch
+        pygame.draw.line(surface, col, (cx + int(radius * 0.3), cy - int(radius * 0.1)),
+                         (cx + int(radius * 0.6), cy + int(radius * 0.4)), 1)
 
     # ──────────────────────────────────────────────
     # Main draw (single call per frame — one flip only)
     # ──────────────────────────────────────────────
 
-    def draw(self, game, ai_time, mode, suggestion=None):
+    def draw(self, game, ai_time, mode, suggestion=None, aide_on=False,
+             power_type=None, power_hover=None):
         """Render one complete frame. Includes win overlay if game is over."""
         cell, margin = self._scale()
         self._panel_x = margin + cell * (BOARD_SIZE - 1) + margin
@@ -190,17 +206,31 @@ class GUI:
         self.screen.fill(COLOR_BG)
         self._draw_grid(cell, margin)
         self._draw_star_points(cell, margin)
+
+        if game.rules.shooting_star:
+            self._draw_holes(game, cell, margin)
+
         self._draw_stones(game, cell, margin)
-        if self.hover_pos and not game.is_game_over():
+
+        if self.hover_pos and not game.is_game_over() and not power_type:
             self._draw_hover(self.hover_pos, cell)
+
+        # Area of effect for powers
+        if power_type and power_hover and not game.is_game_over():
+            self._draw_power_preview(game, power_type, power_hover, cell, margin)
+
         if suggestion and not game.is_game_over():
             self._draw_suggestion(suggestion, cell)
 
-        self._draw_panel(game, ai_time, mode)
+        self._draw_panel(game, ai_time, mode, aide_on, power_type)
 
         # Win overlay rendered here (single flip, no flash)
         if game.is_game_over():
             self._draw_win_overlay(game)
+
+        # Aide popup on board corner to avoid covering panel status text
+        if self.aide_msg and pygame.time.get_ticks() < self.aide_timer:
+            self._draw_aide_on_board()
 
         pygame.display.flip()
 
@@ -230,13 +260,15 @@ class GUI:
         stone_r = max(4, cell // 2 - 2)
         for r in range(BOARD_SIZE):
             for c in range(BOARD_SIZE):
-                if board[r][c] == EMPTY:
+                if board[r][c] in (EMPTY, HOLE):
                     continue
                 x = margin + c * cell
                 y = margin + r * cell
-                
+
                 age_label = None
                 cracked = False
+                blip_indicator = False
+                blip_highlight = False
                 if (r, c) in game.stones_ply:
                     ply_remaining = DECAY_LIFESPAN - (game.ply_count - game.stones_ply[(r, c)])
                     if ply_remaining <= DECAY_WARN_THRESHOLD:
@@ -244,13 +276,102 @@ class GUI:
                     if ply_remaining <= DECAY_CRACK_THRESHOLD:
                         cracked = True
 
+                # Shooting star (blipping) highlight
+                if hasattr(game, 'blipping_stones') and (r, c) in game.blipping_stones:
+                    start_ply = game.blipping_stones[(r, c)]
+                    if game.board[r][c] in (BLACK, WHITE):
+                        blip_indicator = True
+                        blip_rem = 3 - ((game.ply_count - start_ply) % 3)
+                        age_label = str(blip_rem)
+                        blip_highlight = True
+
                 self._draw_stone(self.screen, x, y, stone_r, board[r][c] == BLACK,
                                  age_label=age_label, cracked=cracked)
-                
+
+                if blip_indicator:
+                    # Stronger highlight for blipping stones
+                    for r_offset in range(2, 8):
+                        color = (255, 255, 80, max(60, 180 - r_offset * 20))
+                        pygame.gfxdraw.aacircle(self.screen, x, y, stone_r + r_offset, color)
+                    # Pulsing outer ring
+                    import math
+                    pulse = int(30 * (1 + math.sin(pygame.time.get_ticks() / 200)))
+                    pygame.gfxdraw.aacircle(self.screen, x, y, stone_r + 8, (255, 255, 120, 80 + pulse))
+
                 if last_move and (r, c) == last_move:
                     dot = (160, 50, 50) if board[r][c] == BLACK else (50, 80, 200)
                     dr  = max(2, stone_r // 5)
                     pygame.gfxdraw.filled_circle(self.screen, x, y, dr, dot)
+
+    def _draw_holes(self, game, cell, margin):
+        stone_r = max(4, cell // 2 - 2)
+        # Permanent holes
+        for r, c in game.holes:
+            x = margin + c * cell
+            y = margin + r * cell
+            # Light grey fill, lighter border
+            pygame.gfxdraw.filled_circle(self.screen, x, y, stone_r, (180, 180, 180))
+            pygame.gfxdraw.aacircle(self.screen, x, y, stone_r, (210, 210, 210))
+            # Bold multiplication sign (U+2715)
+            fnt = pygame.font.SysFont("dejavusans,arial,sans-serif", max(18, stone_r*2), bold=True)
+            cross = fnt.render("✕", True, (120, 120, 120))
+            cross_rect = cross.get_rect(center=(x, y))
+            self.screen.blit(cross, cross_rect)
+
+        # Hole Forecasts: same highlight style as blipping stones, but no stone in center.
+        for (r, c), ply in game.hole_forecast.items():
+            x = margin + c * cell
+            y = margin + r * cell
+            rem = max(1, min(3, ply - game.ply_count))
+
+            for r_offset in range(2, 8):
+                color = (255, 255, 80, max(60, 180 - r_offset * 20))
+                pygame.gfxdraw.aacircle(self.screen, x, y, stone_r + r_offset, color)
+
+            import math
+            pulse = int(30 * (1 + math.sin(pygame.time.get_ticks() / 200)))
+            pygame.gfxdraw.aacircle(self.screen, x, y, stone_r + 8, (255, 255, 120, 80 + pulse))
+
+            # Keep center empty: draw only countdown text.
+            fnt = pygame.font.SysFont("dejavusans", max(12, stone_r), bold=True)
+            ts = fnt.render(str(rem), True, (180, 70, 10))
+            self.screen.blit(ts, ts.get_rect(center=(x, y)))
+
+    def _draw_power_preview(self, game, power_type, pos, cell, margin):
+        row, col = pos
+        x, y = margin + col * cell, margin + row * cell
+        stone_r = max(4, cell // 2 - 2)
+
+        # Center target
+        pygame.gfxdraw.aacircle(self.screen, x, y, stone_r + 2, (100, 255, 100))
+
+        opponent = WHITE if game.current_player == BLACK else BLACK
+        targets = []
+
+        if power_type == POWER_BOMB:
+            col_effect = (255, 50, 50, 100)
+            for dr in [-1, 0, 1]:
+                for dc in [-1, 0, 1]:
+                    if dr == 0 and dc == 0: continue
+                    if game._in_bounds(row+dr, col+dc):
+                        targets.append((row+dr, col+dc))
+        elif power_type == POWER_CROSS:
+            col_effect = (50, 100, 255, 100)
+            for d in [-2, -1, 1, 2]:
+                if game._in_bounds(row+d, col): targets.append((row+d, col))
+                if game._in_bounds(row, col+d): targets.append((row, col+d))
+        elif power_type == POWER_DIAGONAL:
+            col_effect = (200, 50, 255, 100)
+            for d in [-2, -1, 1, 2]:
+                if game._in_bounds(row+d, col+d): targets.append((row+d, col+d))
+                if game._in_bounds(row+d, col-d): targets.append((row+d, col-d))
+
+        for r, c in targets:
+            tx = margin + c * cell
+            ty = margin + r * cell
+            s = pygame.Surface((stone_r*2, stone_r*2), pygame.SRCALPHA)
+            pygame.gfxdraw.filled_circle(s, stone_r, stone_r, stone_r - 1, col_effect)
+            self.screen.blit(s, (tx - stone_r, ty - stone_r))
 
     def _draw_hover(self, pos, cell):
         row, col = pos
@@ -268,8 +389,41 @@ class GUI:
         pygame.gfxdraw.aacircle(self.screen, x, y, sr - 1, (255, 140, 0))
 
     # ──────────────────────────────────────────────
-    # Win overlay (drawn inside draw(), no extra flip)
+    # Popups & Overlays
     # ──────────────────────────────────────────────
+
+    def show_aide_popup(self, msg, duration_ms=2000):
+        self.aide_msg = msg
+        self.aide_timer = pygame.time.get_ticks() + duration_ms
+
+    def _draw_aide_on_board(self):
+        """Render a solid status block at the board's bottom-right corner."""
+        px = self._panel_x
+
+        # Colors based on message
+        if "UNO" in self.aide_msg:
+            bg_col = (140, 20, 20)  # Deep Red
+            txt_col = (255, 230, 180) # Pale Gold / Cream
+        elif "Threat" in self.aide_msg or "威脅" in self.aide_msg:
+            bg_col = (255, 220, 80)  # Bright Yellow-Orange
+            txt_col = (120, 60, 0)   # Darker Orange text
+        else:
+            bg_col = (210, 180, 40)  # Muted Darker Yellow
+            txt_col = (40, 40, 40)   # Dark Grey
+
+        txt = self.font_small.render(self.aide_msg, True, txt_col)
+
+        bw = txt.get_width() + 16
+        bh = txt.get_height() + 12
+        # Keep this message in board area (left of side panel), near bottom-right.
+        bx = max(10, px - bw - 18)
+        by = self.win_h - bh - 18
+        rect = pygame.Rect(bx, by, bw, bh)
+
+        pygame.draw.rect(self.screen, bg_col, rect, border_radius=6)
+
+        txt = self.font_small.render(self.aide_msg, True, txt_col)
+        self.screen.blit(txt, txt.get_rect(center=rect.center))
 
     def _draw_win_overlay(self, game):
         winner = game.winner
@@ -294,7 +448,7 @@ class GUI:
     # Side panel
     # ──────────────────────────────────────────────
 
-    def _draw_panel(self, game, ai_time, mode):
+    def _draw_panel(self, game, ai_time, mode, aide_on, power_type):
         px = self._panel_x
         pw = self.win_w - px
         pygame.draw.rect(self.screen, COLOR_PANEL_BG, (px - 10, 0, pw + 10, self.win_h))
@@ -313,13 +467,36 @@ class GUI:
         label(t("title"), COLOR_ACCENT, self.font_title)
         label(SEP, COLOR_ACCENT)
 
-        mode_str = t("vs_ai") if mode == "ai" else t("vs_human")
-        label(f'{t("mode")}: {mode_str}')
+        label(f'{t("mode")}: {t("mode_" + game.rules.name)}')
 
         label(SEP, COLOR_ACCENT)
         label(t("captured"))
-        label(f'  {t("black")}: {game.captures.get(BLACK, 0)}')
-        label(f'  {t("white")}: {game.captures.get(WHITE, 0)}')
+        label(f'  {t("black")}: {game.captures.get(BLACK, 0) * 2} {t("pieces")}')
+        label(f'  {t("white")}: {game.captures.get(WHITE, 0) * 2} {t("pieces")}')
+
+        if game.rules.power_stones:
+            label(SEP, COLOR_ACCENT)
+            p_black = game.individual_captures.get(BLACK, 0)
+            p_white = game.individual_captures.get(WHITE, 0)
+            # Show both players' power status in PvP
+            if mode == "human":
+                label(f'{t("power")} ({t("black")}): {p_black} / 5', (150, 150, 150))
+                label(f'{t("power")} ({t("white")}): {p_white} / 5', (180, 180, 255))
+                if p_black >= 5:
+                    txt_col = (255, 255, 50) if (pygame.time.get_ticks()//200) % 2 == 0 else (200, 150, 20)
+                    label(t("power_ready") + f' ({t("black")})', txt_col, self.font_title)
+                if p_white >= 5:
+                    txt_col = (180, 220, 255) if (pygame.time.get_ticks()//200) % 2 == 0 else (120, 180, 255)
+                    label(t("power_ready") + f' ({t("white")})', txt_col, self.font_title)
+            else:
+                if p_black >= 5:
+                    txt_col = (255, 255, 50) if (pygame.time.get_ticks()//200) % 2 == 0 else (200, 150, 20)
+                    label(t("power_ready"), txt_col, self.font_title)
+                    label(t("activate_right_click"), (200, 200, 200), self.font_small)
+                    if power_type:
+                        label(t("power_" + power_type), (150, 255, 150), self.font_small)
+                else:
+                    label(f'{t("power")}: {p_black} / 5', (150, 150, 150))
 
         label(SEP, COLOR_ACCENT)
         if game.is_game_over():
@@ -338,39 +515,54 @@ class GUI:
             label(SEP, COLOR_ACCENT)
             label(self.status_msg, font=self.font_small)
 
-        # ---- Language buttons (ASCII labels, always renderable) ----
-        self._draw_lang_buttons(px, pw)
+        # ---- Compact Aide/Menu buttons on one row ----
+        row_h = 42
+        row_y = self.win_h - row_h - 70
+        gap = 8
+        btn_w = (pw - 14 - gap) // 2
 
-        # ---- Visible "Menu" button ----
-        mb_h = 30
-        mb_y = self.win_h - mb_h - 70
-        self._menu_rect = pygame.Rect(px + 6, mb_y, pw - 14, mb_h)
+        self._aide_rect = pygame.Rect(px + 6, row_y, btn_w, row_h)
+        a_hovered = self._aide_rect.collidepoint(pygame.mouse.get_pos())
+        a_bg = (60, 100, 60) if aide_on else ((80, 50, 50) if a_hovered else (50, 30, 30))
+        a_bdr = (100, 150, 100) if aide_on else (120, 60, 60)
+        pygame.draw.rect(self.screen, a_bg, self._aide_rect, border_radius=6)
+        pygame.draw.rect(self.screen, a_bdr, self._aide_rect, 1, border_radius=6)
+
+        atxt = t("aide_on") if aide_on else t("aide_off")
+        asurf = self.font_med.render(atxt, True, (240, 240, 240))
+        self.screen.blit(asurf, asurf.get_rect(center=self._aide_rect.center))
+
+        self._menu_rect = pygame.Rect(px + 6 + btn_w + gap, row_y, btn_w, row_h)
         m_hovered = self._menu_rect.collidepoint(pygame.mouse.get_pos())
         m_bg  = (110, 70, 25) if m_hovered else (70, 50, 20)
         m_bdr = (200, 140, 50) if m_hovered else (130, 95, 40)
         pygame.draw.rect(self.screen, m_bg, self._menu_rect, border_radius=6)
         pygame.draw.rect(self.screen, m_bdr, self._menu_rect, 1, border_radius=6)
-        mt = self.font_small.render(t("menu"), True, (230, 215, 185))
+        mt = self.font_med.render(t("menu"), True, (230, 215, 185))
         self.screen.blit(mt, mt.get_rect(center=self._menu_rect.center))
 
-        # ---- Quit hint ----
-        y = self.win_h - 30
-        label(t("quit"), font=self.font_small)
+        # ---- Undo/Quit hints on one row: R left, Q right ----
+        hint_y = self.win_h - 26
+        undo_s = self.font_small.render(t("undo"), True, COLOR_TEXT)
+        quit_s = self.font_small.render(t("quit"), True, COLOR_TEXT)
+        self.screen.blit(undo_s, (px + 8, hint_y))
+        self.screen.blit(quit_s, (px + pw - 8 - quit_s.get_width(), hint_y))
 
     def _draw_lang_buttons(self, px, pw):
         """
         Draw language switcher buttons using ASCII short-names (EN/FR/ZH).
-        Storing rects here so click detection works on the very next event.
+        Positioned at the top right of the application window.
         """
         langs   = i18n.LANGS
         labels  = i18n.LANG_LABELS
         n       = len(langs)
-        btn_w   = max(32, (pw - 14 - (n - 1) * 5) // n)
-        btn_h   = 26
+        btn_w   = max(45, min(90, (pw - 14 - (n - 1) * 5) // n))
+        btn_h   = 30
         gap     = 5
         total   = n * btn_w + (n - 1) * gap
-        start_x = px + (pw - total) // 2
-        y       = self.win_h - 38
+        # Top right positioning
+        start_x = self.win_w - total - 20
+        y       = 10
 
         for i, lang in enumerate(langs):
             rx   = start_x + i * (btn_w + gap)
@@ -382,11 +574,28 @@ class GUI:
             bg     = COLOR_ACCENT if active else ((85, 62, 25) if hovered else (52, 38, 16))
             border = (255, 200, 80) if active else (120, 88, 38)
             pygame.draw.rect(self.screen, bg, rect, border_radius=5)
-            pygame.draw.rect(self.screen, border, rect, 1, border_radius=5)
+            pygame.draw.rect(self.screen, bg, rect, border_radius=6)
+            pygame.draw.rect(self.screen, border, rect, 1, border_radius=6)
 
-            # ASCII label — renders correctly in DejaVu / any fallback font
-            tf = self.font_small.render(labels.get(lang, lang), True, (245, 238, 218))
-            self.screen.blit(tf, tf.get_rect(center=rect.center))
+            # Draw Flag to match the logic in main.py
+            fx, fy = rect.x + 8, rect.centery - 8
+            if lang == "EN":
+                pygame.draw.rect(self.screen, (200, 50, 50), (fx, fy, 22, 16))
+                pygame.draw.rect(self.screen, (255, 255, 255), (fx, fy+2, 22, 3))
+                pygame.draw.rect(self.screen, (255, 255, 255), (fx, fy+7, 22, 3))
+                pygame.draw.rect(self.screen, (255, 255, 255), (fx, fy+12, 22, 3))
+                pygame.draw.rect(self.screen, (50, 50, 150), (fx, fy, 11, 8))
+            elif lang == "FR":
+                pygame.draw.rect(self.screen, (40, 80, 180), (fx, fy, 7, 16))
+                pygame.draw.rect(self.screen, (255, 255, 255), (fx+7, fy, 8, 16))
+                pygame.draw.rect(self.screen, (220, 40, 50), (fx+15, fy, 7, 16))
+            elif lang == "ZH":
+                pygame.draw.rect(self.screen, (220, 30, 30), (fx, fy, 22, 16))
+                pygame.draw.rect(self.screen, (30, 40, 160), (fx, fy, 11, 8))
+                pygame.draw.circle(self.screen, (255, 255, 255), (fx+5, fy+4), 3)
+
+            lsurf = self.font_small.render(labels.get(lang, lang), True, (230, 220, 200))
+            self.screen.blit(lsurf, lsurf.get_rect(midleft=(fx + 28, rect.centery)))
 
     # ──────────────────────────────────────────────
     # Input helpers
@@ -408,6 +617,10 @@ class GUI:
     def check_menu_click(self, pos):
         """Return True if the menu button area was clicked."""
         return self._menu_rect is not None and self._menu_rect.collidepoint(pos)
+
+    def check_aide_click(self, pos):
+        """Return True if the aide button area was clicked."""
+        return self._aide_rect is not None and self._aide_rect.collidepoint(pos)
 
     def set_status(self, msg):
         self.status_msg = msg
