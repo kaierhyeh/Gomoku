@@ -64,6 +64,10 @@ class GUI:
         self._lang_rects = {lang: pygame.Rect(0, 0, 0, 0) for lang in i18n.LANGS}
         self._menu_rect  = pygame.Rect(0, 0, 0, 0)
         self._aide_rect = pygame.Rect(0, 0, 0, 0)
+        self._guide_rect = pygame.Rect(0, 0, 0, 0)
+        self._guide_overlay_rect = pygame.Rect(0, 0, 0, 0)
+        self.guide_msg = ""
+        self.guide_open = False
 
     # ──────────────────────────────────────────────
     # Fonts
@@ -232,6 +236,10 @@ class GUI:
         if self.aide_msg and pygame.time.get_ticks() < self.aide_timer:
             self._draw_aide_on_board()
 
+        # Guide popup
+        if self.guide_open and self.guide_msg:
+            self._draw_guide_overlay()
+
         pygame.display.flip()
 
     # ──────────────────────────────────────────────
@@ -396,6 +404,16 @@ class GUI:
         self.aide_msg = msg
         self.aide_timer = pygame.time.get_ticks() + duration_ms
 
+    def show_guide(self, msg):
+        """Display a guide message. Closes when clicking outside the box."""
+        self.guide_msg = msg
+        self.guide_open = True
+
+    def close_guide(self):
+        """Close the guide overlay."""
+        self.guide_open = False
+        self.guide_msg = ""
+
     def _draw_aide_on_board(self):
         """Render a solid status block at the board's bottom-right corner."""
         px = self._panel_x
@@ -424,6 +442,39 @@ class GUI:
 
         txt = self.font_small.render(self.aide_msg, True, txt_col)
         self.screen.blit(txt, txt.get_rect(center=rect.center))
+
+    def _draw_guide_overlay(self):
+        """Render a guide overlay in the center of the screen."""
+        # Create semi-transparent overlay
+        overlay = pygame.Surface((self.win_w, self.win_h), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 180))
+        self.screen.blit(overlay, (0, 0))
+
+        # Draw guide box
+        box_w = min(600, self.win_w - 40)
+        box_h = min(250, self.win_h - 40)
+        box_x = self.win_w // 2 - box_w // 2
+        box_y = self.win_h // 2 - box_h // 2
+        box_rect = pygame.Rect(box_x, box_y, box_w, box_h)
+
+        # Store rect for click detection
+        self._guide_overlay_rect = box_rect
+
+        pygame.draw.rect(self.screen, (60, 50, 35), box_rect, border_radius=10)
+        pygame.draw.rect(self.screen, (200, 130, 50), box_rect, 3, border_radius=10)
+
+        # Title
+        title_surf = self.font_med.render(i18n.get("guide_title"), True, (200, 130, 50))
+        self.screen.blit(title_surf, (box_x + 20, box_y + 15))
+
+        # Guide text (multiple lines if needed)
+        lines = self.guide_msg.split('\n')
+        y_offset = box_y + 50
+        for line in lines:
+            if line.strip():
+                txt_surf = self.font_small.render(line, True, (230, 220, 200))
+                self.screen.blit(txt_surf, (box_x + 20, y_offset))
+                y_offset += txt_surf.get_height() + 8
 
     def _draw_win_overlay(self, game):
         winner = game.winner
@@ -515,38 +566,82 @@ class GUI:
             label(SEP, COLOR_ACCENT)
             label(self.status_msg, font=self.font_small)
 
-        # ---- Compact Aide/Menu buttons on one row ----
-        row_h = 42
-        row_y = self.win_h - row_h - 70
-        gap = 8
-        btn_w = (pw - 14 - gap) // 2
+        # ---- Controls layout: Guide (top-left), Aide (bottom-left), Menu (right) ----
+        panel_pad = 8
+        gap = 6
+        btn_h = max(30, min(40, int(self.win_h * 0.05)))
+        controls_bottom = self.win_h - 60
+        top_y = controls_bottom - (2 * btn_h + gap)
 
-        self._aide_rect = pygame.Rect(px + 6, row_y, btn_w, row_h)
+        full_w = pw - 2 * panel_pad
+        half_w = (full_w - gap) // 2
+        left_x = px + panel_pad
+        right_x = left_x + half_w + gap
+
+        # Guide Button (top-left)
+        self._guide_rect = pygame.Rect(left_x, top_y, half_w, btn_h)
+        g_hovered = self._guide_rect.collidepoint(pygame.mouse.get_pos())
+        g_bg = (60, 80, 100) if g_hovered else (40, 55, 75)
+        g_bdr = (150, 180, 220) if g_hovered else (100, 130, 160)
+        pygame.draw.rect(self.screen, g_bg, self._guide_rect, border_radius=6)
+        pygame.draw.rect(self.screen, g_bdr, self._guide_rect, 1, border_radius=6)
+        gt = self.font_small.render(t("guide"), True, (230, 215, 185))
+        # Handle Text Overflow
+        if gt.get_width() > self._guide_rect.width - 10:
+            gt_w = self._guide_rect.width - 10
+            gt = pygame.transform.smoothscale(gt, (gt_w, gt.get_height() * gt_w // gt.get_width()))
+        self.screen.blit(gt, gt.get_rect(center=self._guide_rect.center))
+
+        # Aide Button (bottom-left)
+        self._aide_rect = pygame.Rect(left_x, top_y + btn_h + gap, half_w, btn_h)
         a_hovered = self._aide_rect.collidepoint(pygame.mouse.get_pos())
         a_bg = (60, 100, 60) if aide_on else ((80, 50, 50) if a_hovered else (50, 30, 30))
         a_bdr = (100, 150, 100) if aide_on else (120, 60, 60)
         pygame.draw.rect(self.screen, a_bg, self._aide_rect, border_radius=6)
         pygame.draw.rect(self.screen, a_bdr, self._aide_rect, 1, border_radius=6)
-
         atxt = t("aide_on") if aide_on else t("aide_off")
-        asurf = self.font_med.render(atxt, True, (240, 240, 240))
+        asurf = self.font_small.render(atxt, True, (240, 240, 240))
+        # Handle Text Overflow
+        if asurf.get_width() > self._aide_rect.width - 10:
+            a_w = self._aide_rect.width - 10
+            asurf = pygame.transform.smoothscale(asurf, (a_w, asurf.get_height() * a_w // asurf.get_width()))
         self.screen.blit(asurf, asurf.get_rect(center=self._aide_rect.center))
 
-        self._menu_rect = pygame.Rect(px + 6 + btn_w + gap, row_y, btn_w, row_h)
+        # Menu Button (right, spans two rows)
+        menu_h = 2 * btn_h + gap
+        self._menu_rect = pygame.Rect(right_x, top_y, full_w - half_w - gap, menu_h)
         m_hovered = self._menu_rect.collidepoint(pygame.mouse.get_pos())
-        m_bg  = (110, 70, 25) if m_hovered else (70, 50, 20)
+        m_bg = (110, 70, 25) if m_hovered else (70, 50, 20)
         m_bdr = (200, 140, 50) if m_hovered else (130, 95, 40)
         pygame.draw.rect(self.screen, m_bg, self._menu_rect, border_radius=6)
         pygame.draw.rect(self.screen, m_bdr, self._menu_rect, 1, border_radius=6)
         mt = self.font_med.render(t("menu"), True, (230, 215, 185))
+        # Handle Text Overflow
+        if mt.get_width() > self._menu_rect.width - 10:
+            m_w = self._menu_rect.width - 10
+            mt = pygame.transform.smoothscale(mt, (m_w, mt.get_height() * m_w // mt.get_width()))
         self.screen.blit(mt, mt.get_rect(center=self._menu_rect.center))
 
-        # ---- Undo/Quit hints on one row: R left, Q right ----
-        hint_y = self.win_h - 26
-        undo_s = self.font_small.render(t("undo"), True, COLOR_TEXT)
-        quit_s = self.font_small.render(t("quit"), True, COLOR_TEXT)
-        self.screen.blit(undo_s, (px + 8, hint_y))
-        self.screen.blit(quit_s, (px + pw - 8 - quit_s.get_width(), hint_y))
+        # ---- Responsive hints row: N, R, Q ----
+        hint_y = self.win_h - 25
+        hints = [t("restart"), t("undo"), t("quit")]
+
+        h_surfs = [self.font_small.render(txt, True, COLOR_TEXT) for txt in hints]
+        total_w = sum(s.get_width() for s in h_surfs)
+        available_w = pw - 2 * panel_pad
+
+        if total_w + 20 > available_w:
+            # Wrap to multiple lines if they don't fit
+            curr_y = self.win_h - 45
+            for s in h_surfs:
+                r = s.get_rect(center=(px + pw // 2, curr_y))
+                self.screen.blit(s, r)
+                curr_y += s.get_height() + 2
+        else:
+            # Left, Center, Right aligned
+            self.screen.blit(h_surfs[0], h_surfs[0].get_rect(midleft=(px + panel_pad, hint_y)))
+            self.screen.blit(h_surfs[1], h_surfs[1].get_rect(center=(px + pw // 2, hint_y)))
+            self.screen.blit(h_surfs[2], h_surfs[2].get_rect(midright=(px + pw - panel_pad, hint_y)))
 
     def _draw_lang_buttons(self, px, pw):
         """
@@ -621,6 +716,10 @@ class GUI:
     def check_aide_click(self, pos):
         """Return True if the aide button area was clicked."""
         return self._aide_rect is not None and self._aide_rect.collidepoint(pos)
+
+    def check_guide_click(self, pos):
+        """Return True if the guide button area was clicked."""
+        return self._guide_rect is not None and self._guide_rect.collidepoint(pos)
 
     def set_status(self, msg):
         self.status_msg = msg

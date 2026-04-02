@@ -103,6 +103,12 @@ def run_game(mode_name=MODE_STANDARD, vs_mode=MODE_AI, gui=None):
                 if event.key == pygame.K_m:
                     go_to_menu = True
 
+                if event.key == pygame.K_g:
+                    # Show guide for current mode
+                    guide_key = "guide_" + game.rules.name
+                    guide_text = i18n.get(guide_key)
+                    gui.show_guide(guide_text)
+
                 if event.key == pygame.K_l:
                     i18n.cycle()
                     gui.set_status(i18n.get("language") + ": " + i18n.current())
@@ -125,6 +131,16 @@ def run_game(mode_name=MODE_STANDARD, vs_mode=MODE_AI, gui=None):
                     continue
 
                 if event.button == 1:
+                    # Guide overlay click detection
+                    if gui.guide_open:
+                        if gui._guide_overlay_rect.collidepoint(event.pos):
+                            # Click inside guide box - consume click
+                            continue
+                        else:
+                            # Click outside guide box - close it
+                            gui.close_guide()
+                            continue
+
                     # Language button click
                     lang = gui.check_lang_click(event.pos)
                     if lang:
@@ -140,6 +156,13 @@ def run_game(mode_name=MODE_STANDARD, vs_mode=MODE_AI, gui=None):
                     # Aide button click
                     if gui.check_aide_click(event.pos):
                         aide_on = not aide_on
+                        continue
+
+                    # Guide button click
+                    if gui.check_guide_click(event.pos):
+                        guide_key = "guide_" + game.rules.name
+                        guide_text = i18n.get(guide_key)
+                        gui.show_guide(guide_text)
                         continue
 
                     # Board click (ignored when game over or AI thinking)
