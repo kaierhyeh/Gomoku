@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from constants import (MODE_STANDARD, MODE_DECAY, MODE_POWER, MODE_STAR, 
+from config.game import (MODE_STANDARD, MODE_DECAY, MODE_POWER, MODE_STAR, 
                        MODE_LIMITLESS, MODE_EVERYTHING)
 
 @dataclass

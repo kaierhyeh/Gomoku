@@ -1,4 +1,5 @@
-from constants import BOARD_SIZE, EMPTY, BLACK, WHITE, SCORE
+from config.game import BOARD_SIZE, EMPTY, BLACK, WHITE
+from config.ai import SCORE
 
 
 # ──────────────────────────────────────────────

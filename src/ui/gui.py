@@ -2,13 +2,10 @@ import pygame
 import pygame.gfxdraw
 import sys
 import os
-import i18n
-from constants import (BOARD_SIZE, EMPTY, BLACK, WHITE, HOLE, CELL_SIZE, BOARD_MARGIN,
-                       WINDOW_WIDTH, WINDOW_HEIGHT, COLOR_BG, COLOR_LINE,
-                       COLOR_BLACK_STONE, COLOR_WHITE_STONE,
-                       COLOR_PANEL_BG, COLOR_TEXT, COLOR_ACCENT,
-                       DECAY_LIFESPAN, DECAY_WARN_THRESHOLD, DECAY_CRACK_THRESHOLD,
-                       POWER_BOMB, POWER_CROSS, POWER_DIAGONAL, STAR_WARN_PLY)
+from ui import i18n
+from config.game import (BOARD_SIZE, EMPTY, BLACK, WHITE, HOLE)
+from config.ui import (CELL_SIZE, BOARD_MARGIN, WINDOW_WIDTH, WINDOW_HEIGHT, COLOR_BG, COLOR_LINE, COLOR_BLACK_STONE, COLOR_WHITE_STONE, COLOR_PANEL_BG, COLOR_TEXT, COLOR_ACCENT)
+from config.bonus import (POWER_BOMB, POWER_CROSS, POWER_DIAGONAL, STAR_WARN_PLY)
 
 PANEL_X_DEFAULT = BOARD_MARGIN + CELL_SIZE * (BOARD_SIZE - 1) + BOARD_MARGIN
 
@@ -21,7 +18,7 @@ def _load_font(size, bold=False):
     Load a font that supports CJK characters (needed for Traditional Chinese).
     Tries common paths on Ubuntu/WSL, falls back to pygame default.
     """
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     cjk_paths = [
         os.path.join(base_dir, "assets", "fonts", "NotoSansTC-Regular.otf"),
         "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
@@ -169,8 +166,8 @@ class GUI:
         if age_label and radius >= 9:
             col_txt = (255, 60, 60) if is_black else (220, 30, 30)
             try:
-                # Enlarged font for visibility
-                fnt = pygame.font.SysFont("dejavusans", max(16, int(radius * 1.3)), bold=True)
+                # Use cached font for performance
+                fnt = self.font_med
                 ts  = fnt.render(age_label, True, col_txt)
                 surface.blit(ts, ts.get_rect(center=(cx, cy + radius // 6)))
             except Exception:
@@ -266,6 +263,7 @@ class GUI:
         board = game.board
         last_move = game.last_move
         stone_r = max(4, cell // 2 - 2)
+        hints_cache = game.render_hints  # Evaluate hints once per frame
         for r in range(BOARD_SIZE):
             for c in range(BOARD_SIZE):
                 if board[r][c] in (EMPTY, HOLE):
@@ -277,21 +275,12 @@ class GUI:
                 cracked = False
                 blip_indicator = False
                 blip_highlight = False
-                if (r, c) in game.stones_ply:
-                    ply_remaining = DECAY_LIFESPAN - (game.ply_count - game.stones_ply[(r, c)])
-                    if ply_remaining <= DECAY_WARN_THRESHOLD:
-                        age_label = str(ply_remaining)
-                    if ply_remaining <= DECAY_CRACK_THRESHOLD:
-                        cracked = True
-
-                # Shooting star (blipping) highlight
-                if hasattr(game, 'blipping_stones') and (r, c) in game.blipping_stones:
-                    start_ply = game.blipping_stones[(r, c)]
-                    if game.board[r][c] in (BLACK, WHITE):
-                        blip_indicator = True
-                        blip_rem = 3 - ((game.ply_count - start_ply) % 3)
-                        age_label = str(blip_rem)
-                        blip_highlight = True
+                hints = hints_cache.get((r, c), {})
+                if "cracked" in hints: cracked = True
+                if "age_label" in hints: age_label = hints["age_label"]
+                if "blip" in hints:
+                    blip_indicator = True
+                    blip_highlight = True
 
                 self._draw_stone(self.screen, x, y, stone_r, board[r][c] == BLACK,
                                  age_label=age_label, cracked=cracked)
@@ -321,29 +310,33 @@ class GUI:
             pygame.gfxdraw.filled_circle(self.screen, x, y, stone_r, (180, 180, 180))
             pygame.gfxdraw.aacircle(self.screen, x, y, stone_r, (210, 210, 210))
             # Bold multiplication sign (U+2715)
-            fnt = pygame.font.SysFont("dejavusans,arial,sans-serif", max(18, stone_r*2), bold=True)
+            fnt = self.font_med
             cross = fnt.render("✕", True, (120, 120, 120))
             cross_rect = cross.get_rect(center=(x, y))
             self.screen.blit(cross, cross_rect)
 
         # Hole Forecasts: same highlight style as blipping stones, but no stone in center.
-        for (r, c), ply in game.hole_forecast.items():
-            x = margin + c * cell
-            y = margin + r * cell
-            rem = max(1, min(3, ply - game.ply_count))
+        hints_cache = game.render_hints
+        for r in range(BOARD_SIZE):
+            for c in range(BOARD_SIZE):
+                hints = hints_cache.get((r, c), {})
+                if "hole_forecast" in hints:
+                    rem = hints["hole_forecast"]
+                    x = margin + c * cell
+                    y = margin + r * cell
 
-            for r_offset in range(2, 8):
-                color = (255, 255, 80, max(60, 180 - r_offset * 20))
-                pygame.gfxdraw.aacircle(self.screen, x, y, stone_r + r_offset, color)
+                    for r_offset in range(2, 8):
+                        color = (255, 255, 80, max(60, 180 - r_offset * 20))
+                        pygame.gfxdraw.aacircle(self.screen, x, y, stone_r + r_offset, color)
 
-            import math
-            pulse = int(30 * (1 + math.sin(pygame.time.get_ticks() / 200)))
-            pygame.gfxdraw.aacircle(self.screen, x, y, stone_r + 8, (255, 255, 120, 80 + pulse))
+                    import math
+                    pulse = int(30 * (1 + math.sin(pygame.time.get_ticks() / 200)))
+                    pygame.gfxdraw.aacircle(self.screen, x, y, stone_r + 8, (255, 255, 120, 80 + pulse))
 
-            # Keep center empty: draw only countdown text.
-            fnt = pygame.font.SysFont("dejavusans", max(12, stone_r), bold=True)
-            ts = fnt.render(str(rem), True, (180, 70, 10))
-            self.screen.blit(ts, ts.get_rect(center=(x, y)))
+                    # Keep center empty: draw only countdown text.
+                    fnt = self.font_small
+                    ts = fnt.render(str(rem), True, (180, 70, 10))
+                    self.screen.blit(ts, ts.get_rect(center=(x, y)))
 
     def _draw_power_preview(self, game, power_type, pos, cell, margin):
         row, col = pos
@@ -361,18 +354,21 @@ class GUI:
             for dr in [-1, 0, 1]:
                 for dc in [-1, 0, 1]:
                     if dr == 0 and dc == 0: continue
-                    if game._in_bounds(row+dr, col+dc):
-                        targets.append((row+dr, col+dc))
+                    r, c = row+dr, col+dc
+                    if 0 <= r < BOARD_SIZE and 0 <= c < BOARD_SIZE and (r, c) not in game.holes:
+                        targets.append((r, c))
         elif power_type == POWER_CROSS:
             col_effect = (50, 100, 255, 100)
             for d in [-2, -1, 1, 2]:
-                if game._in_bounds(row+d, col): targets.append((row+d, col))
-                if game._in_bounds(row, col+d): targets.append((row, col+d))
+                for r, c in [(row+d, col), (row, col+d)]:
+                    if 0 <= r < BOARD_SIZE and 0 <= c < BOARD_SIZE and (r, c) not in game.holes:
+                        targets.append((r, c))
         elif power_type == POWER_DIAGONAL:
             col_effect = (200, 50, 255, 100)
             for d in [-2, -1, 1, 2]:
-                if game._in_bounds(row+d, col+d): targets.append((row+d, col+d))
-                if game._in_bounds(row+d, col-d): targets.append((row+d, col-d))
+                for r, c in [(row+d, col+d), (row+d, col-d)]:
+                    if 0 <= r < BOARD_SIZE and 0 <= c < BOARD_SIZE and (r, c) not in game.holes:
+                        targets.append((r, c))
 
         for r, c in targets:
             tx = margin + c * cell

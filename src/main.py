@@ -1,15 +1,14 @@
 import pygame
 import sys
 import threading
-import i18n
-from constants import (BLACK, WHITE, WINDOW_WIDTH, WINDOW_HEIGHT,
-                       MODE_STANDARD, MODE_DECAY, MODE_POWER, MODE_STAR,
-                       MODE_LIMITLESS, MODE_EVERYTHING,
-                       POWER_BOMB, POWER_CROSS, POWER_DIAGONAL)
-from game import Game
-from ai import AI
-from gui import GUI, _load_font
-from bonus import get_rules_for_mode
+from ui import i18n
+from config.game import (BLACK, WHITE, MODE_STANDARD, MODE_DECAY, MODE_POWER, MODE_STAR, MODE_LIMITLESS, MODE_EVERYTHING)
+from config.ui import (WINDOW_WIDTH, WINDOW_HEIGHT)
+from config.bonus import (POWER_BOMB, POWER_CROSS, POWER_DIAGONAL)
+from core.game import Game
+from ai.ai import AI
+from ui.gui import GUI, _load_font
+from rules.bonus import get_rules_for_mode
 
 MODE_AI    = "ai"
 MODE_HUMAN = "human"
@@ -215,7 +214,7 @@ def run_game(mode_name=MODE_STANDARD, vs_mode=MODE_AI, gui=None):
         # ── Aide Checks ──────────────────────────────────
         if aide_on and not game.is_game_over() and not ai_thinking:
             # Determine the opponent (who just played) to check their threats
-            import heuristic
+            from ai.heuristic import evaluate_board, quick_score_move
             opponent = WHITE if game.current_player == BLACK else BLACK
 
             # Show Aide if it's PvP, OR if it's vs AI and it's currently the human's turn (BLACK)

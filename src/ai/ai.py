@@ -1,8 +1,8 @@
 import time
 import random
-from constants import (BOARD_SIZE, EMPTY, BLACK, WHITE,
-                       AI_TIME_LIMIT, MAX_DEPTH, NEIGHBOR_RADIUS, SCORE)
-from heuristic import evaluate_board, quick_score_move
+from config.game import (BOARD_SIZE, EMPTY, BLACK, WHITE)
+from config.ai import (AI_TIME_LIMIT, MAX_DEPTH, NEIGHBOR_RADIUS, SCORE)
+from ai.heuristic import evaluate_board, quick_score_move
 
 
 class AI:
@@ -146,6 +146,8 @@ class AI:
         if is_maximizing:
             best = float('-inf')
             for row, col in candidates:
+                if time.time() - start > AI_TIME_LIMIT:
+                    break
                 sim = game.clone()
                 sim.place_stone(row, col, current)
                 val = self._minimax(sim, depth - 1, alpha, beta, False, start)
@@ -156,6 +158,8 @@ class AI:
         else:
             best = float('inf')
             for row, col in candidates:
+                if time.time() - start > AI_TIME_LIMIT:
+                    break
                 sim = game.clone()
                 sim.place_stone(row, col, current)
                 val = self._minimax(sim, depth - 1, alpha, beta, True, start)
