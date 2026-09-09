@@ -2,6 +2,7 @@ import pygame
 import pygame.gfxdraw
 import sys
 import os
+import math
 from ui import i18n
 from config.game import (BOARD_SIZE, EMPTY, BLACK, WHITE, HOLE)
 from config.ui import (CELL_SIZE, BOARD_MARGIN, WINDOW_WIDTH, WINDOW_HEIGHT, COLOR_BG, COLOR_LINE, COLOR_BLACK_STONE, COLOR_WHITE_STONE, COLOR_PANEL_BG, COLOR_TEXT, COLOR_ACCENT)
@@ -291,7 +292,6 @@ class GUI:
                         color = (255, 255, 80, max(60, 180 - r_offset * 20))
                         pygame.gfxdraw.aacircle(self.screen, x, y, stone_r + r_offset, color)
                     # Pulsing outer ring
-                    import math
                     pulse = int(30 * (1 + math.sin(pygame.time.get_ticks() / 200)))
                     pygame.gfxdraw.aacircle(self.screen, x, y, stone_r + 8, (255, 255, 120, 80 + pulse))
 
@@ -329,7 +329,6 @@ class GUI:
                         color = (255, 255, 80, max(60, 180 - r_offset * 20))
                         pygame.gfxdraw.aacircle(self.screen, x, y, stone_r + r_offset, color)
 
-                    import math
                     pulse = int(30 * (1 + math.sin(pygame.time.get_ticks() / 200)))
                     pygame.gfxdraw.aacircle(self.screen, x, y, stone_r + 8, (255, 255, 120, 80 + pulse))
 
@@ -440,15 +439,43 @@ class GUI:
         self.screen.blit(txt, txt.get_rect(center=rect.center))
 
     def _draw_guide_overlay(self):
-        """Render a guide overlay in the center of the screen."""
+        """Render an informative guide overlay in the center of the screen."""
         # Create semi-transparent overlay
         overlay = pygame.Surface((self.win_w, self.win_h), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 180))
+        overlay.fill((0, 0, 0, 190))
         self.screen.blit(overlay, (0, 0))
 
-        # Draw guide box
-        box_w = min(600, self.win_w - 40)
-        box_h = min(250, self.win_h - 40)
+        # Guide box width
+        box_w = min(740, self.win_w - 40)
+        max_text_w = box_w - 44
+
+        # Wrap text lines nicely to fit inside box
+        rendered_lines = []
+        for raw_line in self.guide_msg.split('\n'):
+            stripped = raw_line.rstrip()
+            if not stripped:
+                rendered_lines.append("")
+                continue
+            if self.font_small.size(stripped)[0] <= max_text_w:
+                rendered_lines.append(stripped)
+            else:
+                words = stripped.split(' ')
+                curr = ""
+                for w in words:
+                    test_l = f"{curr} {w}".strip() if curr else w
+                    if self.font_small.size(test_l)[0] <= max_text_w:
+                        curr = test_l
+                    else:
+                        if curr:
+                            rendered_lines.append(curr)
+                        curr = w
+                if curr:
+                    rendered_lines.append(curr)
+
+        # Dynamic box height calculation
+        line_h = self.font_small.get_linesize() + 4
+        needed_h = 58 + len(rendered_lines) * line_h + 38
+        box_h = min(max(280, needed_h), self.win_h - 30)
         box_x = self.win_w // 2 - box_w // 2
         box_y = self.win_h // 2 - box_h // 2
         box_rect = pygame.Rect(box_x, box_y, box_w, box_h)
@@ -456,21 +483,33 @@ class GUI:
         # Store rect for click detection
         self._guide_overlay_rect = box_rect
 
-        pygame.draw.rect(self.screen, (60, 50, 35), box_rect, border_radius=10)
-        pygame.draw.rect(self.screen, (200, 130, 50), box_rect, 3, border_radius=10)
+        # Draw panel background & glowing border
+        pygame.draw.rect(self.screen, (42, 32, 22), box_rect, border_radius=12)
+        pygame.draw.rect(self.screen, (210, 140, 50), box_rect, 2, border_radius=12)
 
         # Title
-        title_surf = self.font_med.render(i18n.get("guide_title"), True, (200, 130, 50))
-        self.screen.blit(title_surf, (box_x + 20, box_y + 15))
+        title_surf = self.font_med.render(i18n.get("guide_title"), True, (230, 150, 60))
+        self.screen.blit(title_surf, (box_x + 22, box_y + 16))
 
-        # Guide text (multiple lines if needed)
-        lines = self.guide_msg.split('\n')
-        y_offset = box_y + 50
-        for line in lines:
-            if line.strip():
-                txt_surf = self.font_small.render(line, True, (230, 220, 200))
-                self.screen.blit(txt_surf, (box_x + 20, y_offset))
-                y_offset += txt_surf.get_height() + 8
+        # Guide text
+        y_offset = box_y + 54
+        for line in rendered_lines:
+            if line:
+                # Color highlights: headers & bullets warm gold, body soft warm white
+                if line.startswith('[') or line.startswith('•'):
+                    col = (255, 230, 160)
+                elif line.strip().startswith('-'):
+                    col = (235, 220, 200)
+                else:
+                    col = (215, 205, 185)
+                txt_surf = self.font_small.render(line, True, col)
+                self.screen.blit(txt_surf, (box_x + 22, y_offset))
+            y_offset += line_h
+
+        # Close hint at bottom
+        close_txt = i18n.get("guide_close")
+        close_surf = self.font_small.render(close_txt, True, (160, 140, 110))
+        self.screen.blit(close_surf, (box_x + box_w // 2 - close_surf.get_width() // 2, box_y + box_h - 25))
 
     def _draw_win_overlay(self, game):
         winner = game.winner
@@ -525,23 +564,29 @@ class GUI:
             label(SEP, COLOR_ACCENT)
             p_black = game.individual_captures.get(BLACK, 0)
             p_white = game.individual_captures.get(WHITE, 0)
+            p_curr = game.individual_captures.get(game.current_player, 0)
             # Show both players' power status in PvP
             if mode == "human":
                 label(f'{t("power")} ({t("black")}): {p_black} / 5', (150, 150, 150))
                 label(f'{t("power")} ({t("white")}): {p_white} / 5', (180, 180, 255))
-                if p_black >= 5:
+                if p_curr >= 5:
+                    curr_name = t("black") if game.current_player == BLACK else t("white")
                     txt_col = (255, 255, 50) if (pygame.time.get_ticks()//200) % 2 == 0 else (200, 150, 20)
-                    label(t("power_ready") + f' ({t("black")})', txt_col, self.font_title)
-                if p_white >= 5:
-                    txt_col = (180, 220, 255) if (pygame.time.get_ticks()//200) % 2 == 0 else (120, 180, 255)
-                    label(t("power_ready") + f' ({t("white")})', txt_col, self.font_title)
+                    label(t("power_ready") + f' ({curr_name})', txt_col, self.font_title)
+                    if power_type:
+                        label(f'★ {t("power_" + power_type)}', (100, 255, 100), self.font_small)
+                        label(t("cycle_hint"), (200, 220, 150), self.font_small)
+                    else:
+                        label(t("activate_right_click"), (200, 200, 200), self.font_small)
             else:
                 if p_black >= 5:
                     txt_col = (255, 255, 50) if (pygame.time.get_ticks()//200) % 2 == 0 else (200, 150, 20)
                     label(t("power_ready"), txt_col, self.font_title)
-                    label(t("activate_right_click"), (200, 200, 200), self.font_small)
                     if power_type:
-                        label(t("power_" + power_type), (150, 255, 150), self.font_small)
+                        label(f'★ {t("power_" + power_type)}', (100, 255, 100), self.font_small)
+                        label(t("cycle_hint"), (200, 220, 150), self.font_small)
+                    else:
+                        label(t("activate_right_click"), (200, 200, 200), self.font_small)
                 else:
                     label(f'{t("power")}: {p_black} / 5', (150, 150, 150))
 

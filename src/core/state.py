@@ -16,5 +16,6 @@ class GameState:
     next_star_ply: int = -1
     current_player: int = BLACK
     winner: Optional[int] = None
+    pending_win: Optional[int] = None
     last_move: Optional[Tuple[int, int]] = None
     history: List[dict] = field(default_factory=list)

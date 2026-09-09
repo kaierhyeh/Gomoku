@@ -45,7 +45,6 @@ def _score_sequence(board, row, col, dr, dc, player):
     Analyze a single stone sequence starting at (row, col) in direction (dr, dc).
     Classifies and scores it based on pattern type.
     """
-    opponent = WHITE if player == BLACK else BLACK
     length = 0
     r, c = row, col
 
@@ -83,6 +82,23 @@ def _classify_pattern(length, start_open, end_open):
     return 0
 
 
+def _count_captures_for_scoring(board, row, col, player):
+    """Count number of opponent pairs captured by placing at (row, col)."""
+    opponent = WHITE if player == BLACK else BLACK
+    pairs = 0
+    for dr, dc in DIRECTIONS:
+        for sign in (1, -1):
+            r1, c1 = row + sign * dr, col + sign * dc
+            r2, c2 = row + sign * 2 * dr, col + sign * 2 * dc
+            r3, c3 = row + sign * 3 * dr, col + sign * 3 * dc
+            if (0 <= r1 < BOARD_SIZE and 0 <= c1 < BOARD_SIZE and
+                0 <= r2 < BOARD_SIZE and 0 <= c2 < BOARD_SIZE and
+                0 <= r3 < BOARD_SIZE and 0 <= c3 < BOARD_SIZE and
+                board[r1][c1] == opponent and board[r2][c2] == opponent and board[r3][c3] == player):
+                pairs += 1
+    return pairs
+
+
 def quick_score_move(board, row, col, player, captures):
     """
     Lightweight evaluation of placing a stone at (row, col).
@@ -92,32 +108,58 @@ def quick_score_move(board, row, col, player, captures):
     opponent = WHITE if player == BLACK else BLACK
     score = 0
 
+    # Offensive capture bonus
+    my_caps = _count_captures_for_scoring(board, row, col, player)
+    if captures.get(player, 0) + my_caps >= 5:
+        return SCORE["FIVE"]  # Immediate win by 10 captures!
+    score += my_caps * 25000
+
+    # Defensive capture blocking
+    opp_caps = _count_captures_for_scoring(board, row, col, opponent)
+    if captures.get(opponent, 0) + opp_caps >= 5:
+        score += SCORE["OPEN_FOUR"] * 2  # Must block opponent 10-capture win!
+    else:
+        score += opp_caps * 20000
+
     for dr, dc in DIRECTIONS:
-        # Offensive: how this move improves our sequences
         score += _scan_line_score(board, row, col, dr, dc, player)
-        # Defensive: how this move blocks the opponent
-        score += _scan_line_score(board, row, col, dr, dc, opponent) * 0.9
+        score += _scan_line_score(board, row, col, dr, dc, opponent) * 1.05
 
     return score
 
 
 def _scan_line_score(board, row, col, dr, dc, player):
-    """Count consecutive player stones in one direction through (row, col)."""
+    """Count consecutive player stones in one direction through (row, col) with open-end validation."""
     count = 1
+    open_ends = 0
+
     for sign in (1, -1):
         r, c = row + sign * dr, col + sign * dc
         while 0 <= r < BOARD_SIZE and 0 <= c < BOARD_SIZE and board[r][c] == player:
             count += 1
             r += sign * dr
             c += sign * dc
+        if 0 <= r < BOARD_SIZE and 0 <= c < BOARD_SIZE and board[r][c] == EMPTY:
+            open_ends += 1
 
-    # Return exponential score based on length
     if count >= 5:
         return SCORE["FIVE"]
     if count == 4:
-        return SCORE["OPEN_FOUR"]
+        if open_ends == 2:
+            return SCORE["OPEN_FOUR"]
+        elif open_ends == 1:
+            return SCORE["CLOSED_FOUR"]
+        return 0  # Dead four (cannot form five)
     if count == 3:
-        return SCORE["OPEN_THREE"]
+        if open_ends == 2:
+            return SCORE["OPEN_THREE"]
+        elif open_ends == 1:
+            return SCORE["CLOSED_THREE"]
+        return 0  # Dead three
     if count == 2:
-        return SCORE["OPEN_TWO"]
-    return 1
+        if open_ends == 2:
+            return SCORE["OPEN_TWO"]
+        elif open_ends == 1:
+            return SCORE["CLOSED_TWO"]
+        return 0  # Dead two
+    return 1 if open_ends > 0 else 0

@@ -1,12 +1,15 @@
 import pygame
+import pygame.gfxdraw
 import sys
 import threading
+import math
 from ui import i18n
 from config.game import (BLACK, WHITE, MODE_STANDARD, MODE_DECAY, MODE_POWER, MODE_STAR, MODE_LIMITLESS, MODE_EVERYTHING)
 from config.ui import (WINDOW_WIDTH, WINDOW_HEIGHT)
 from config.bonus import (POWER_BOMB, POWER_CROSS, POWER_DIAGONAL)
 from core.game import Game
 from ai.ai import AI
+from ai.heuristic import _score_player
 from ui.gui import GUI, _load_font
 from rules.bonus import get_rules_for_mode
 
@@ -65,6 +68,9 @@ def run_game(mode_name=MODE_STANDARD, vs_mode=MODE_AI, gui=None):
 
             if event.type == pygame.KEYDOWN:
                 if event.key in (pygame.K_q, pygame.K_ESCAPE):
+                    if gui.guide_open:
+                        gui.close_guide()
+                        continue
                     pygame.quit()
                     sys.exit()
 
@@ -103,28 +109,62 @@ def run_game(mode_name=MODE_STANDARD, vs_mode=MODE_AI, gui=None):
                     go_to_menu = True
 
                 if event.key == pygame.K_g:
-                    # Show guide for current mode
-                    guide_key = "guide_" + game.rules.name
-                    guide_text = i18n.get(guide_key)
-                    gui.show_guide(guide_text)
+                    # Show/hide guide for current mode
+                    if gui.guide_open:
+                        gui.close_guide()
+                    else:
+                        guide_key = "guide_" + game.rules.name
+                        guide_text = i18n.get(guide_key)
+                        gui.show_guide(guide_text)
+                    continue
 
                 if event.key == pygame.K_l:
                     i18n.cycle()
                     gui.set_status(i18n.get("language") + ": " + i18n.current())
 
+                # Power stones rotation shortcuts: Tab to cycle, 1/2/3 to select directly
+                if game.rules.power_stones and game.individual_captures.get(game.current_player, 0) >= 5:
+                    if event.key == pygame.K_TAB:
+                        power_idx = (power_idx + 1) % len(power_types)
+                        power_active = True
+                        gui.set_status(i18n.get("power_" + power_types[power_idx]))
+                    elif event.key in (pygame.K_1, pygame.K_KP1):
+                        power_idx = 0
+                        power_active = True
+                        gui.set_status(i18n.get("power_" + power_types[power_idx]))
+                    elif event.key in (pygame.K_2, pygame.K_KP2):
+                        power_idx = 1
+                        power_active = True
+                        gui.set_status(i18n.get("power_" + power_types[power_idx]))
+                    elif event.key in (pygame.K_3, pygame.K_KP3):
+                        power_idx = 2
+                        power_active = True
+                        gui.set_status(i18n.get("power_" + power_types[power_idx]))
+
             if event.type == pygame.MOUSEMOTION:
                 gui.update_hover(event.pos)
 
+            if event.type == pygame.MOUSEWHEEL:
+                if game.rules.power_stones and game.individual_captures.get(game.current_player, 0) >= 5:
+                    power_idx = (power_idx - event.y) % len(power_types)
+                    power_active = True
+                    gui.set_status(i18n.get("power_" + power_types[power_idx]))
+
             if event.type == pygame.MOUSEBUTTONDOWN:
-                # Scroll wheel cycling for power types
+                # Scroll wheel cycling for power types (fallback for older pygame)
                 if power_active and event.button in (4, 5):
                     power_idx = (power_idx + (1 if event.button == 5 else -1)) % len(power_types)
+                    gui.set_status(i18n.get("power_" + power_types[power_idx]))
                     continue
 
                 if event.button == 3:  # Right click
                     if game.rules.power_stones and game.individual_captures.get(game.current_player, 0) >= 5:
                         # In PvP, allow both black and white to activate power
                         power_active = not power_active
+                        if power_active:
+                            gui.set_status(i18n.get("power_" + power_types[power_idx]))
+                        else:
+                            gui.set_status("")
                     else:
                         power_active = False
                     continue
@@ -208,18 +248,18 @@ def run_game(mode_name=MODE_STANDARD, vs_mode=MODE_AI, gui=None):
                     gui.set_status(f'{name} {i18n.get("wins")}')
                 else:
                     gui.set_status(f'AI ({row},{col}) {ai_time:.3f}s')
+                    gui.set_status(f'AI ({row},{col}) {ai_time:.3f}s (d={ai.last_depth_reached})')
             else:
                 ai_thinking = False
 
         # ── Aide Checks ──────────────────────────────────
         if aide_on and not game.is_game_over() and not ai_thinking:
             # Determine the opponent (who just played) to check their threats
-            from ai.heuristic import evaluate_board, quick_score_move
             opponent = WHITE if game.current_player == BLACK else BLACK
 
             # Show Aide if it's PvP, OR if it's vs AI and it's currently the human's turn (BLACK)
             if vs_mode == MODE_HUMAN or (vs_mode == MODE_AI and game.current_player == BLACK):
-                opp_score = heuristic._score_player(game.board, opponent, 0)
+                opp_score = _score_player(game.board, opponent, 0)
                 if opp_score >= 10000:
                     gui.show_aide_popup("UNO!", 3000)
                 elif opp_score >= 5000:
@@ -254,7 +294,7 @@ def select_mode(gui=None):
 
     # Modes layout: 3x2 with your custom emojis!
     mode_options = [
-        (MODE_STANDARD, "■ □ ■"), (MODE_LIMITLESS, "♾️"), (MODE_DECAY, "🪫"),
+        (MODE_STANDARD, "⚫⚪"), (MODE_LIMITLESS, "♾️"), (MODE_DECAY, "🪫"),
         (MODE_POWER, "🪄"), (MODE_STAR, "🌠"), (MODE_EVERYTHING, "🔥")
     ]
 
@@ -266,8 +306,8 @@ def select_mode(gui=None):
         w, h = screen.get_size()
         scale   = min(w / WINDOW_WIDTH, h / WINDOW_HEIGHT)
         f_title = _load_font(max(16, int(32 * scale)), bold=True)
-        # We MUST use a specific font list that likely contains Emojis
-        f_icon  = pygame.font.SysFont("segoeuiemoji,notocoloremoji,applecoloremoji,symbola,dejavusans,freesans", max(30, int(42 * scale)))
+        # We MUST use a specific font list that contains Emojis (prioritizing notoemoji/symbola over colrv1)
+        f_icon  = pygame.font.SysFont("notoemoji,symbola,segoeuiemoji,applecoloremoji,dejavusans,freesans", max(30, int(42 * scale)))
         f_btn   = _load_font(max(12, int(18 * scale)), bold=True)
         f_small = _load_font(max(12, int(14 * scale)), bold=True)
 
@@ -300,9 +340,37 @@ def select_mode(gui=None):
         lang_btns = {lang: pygame.Rect(lx + i * (lw + lgap), ly, lw, lh)
                      for i, lang in enumerate(langs)}
 
-        return f_title, f_icon, f_btn, f_small, btns, s_rect, lang_btns
+        mode_icons = {}
+        if f_icon:
+            for m_id, icon_txt in mode_options:
+                try:
+                    if m_id == MODE_STANDARD:
+                        # Left stone matches the style and outline curve of right stone (⚪) but filled with the lighter color
+                        s_right = f_icon.render("⚪", True, (255, 220, 120))
+                        iw, ih = s_right.get_size()
+                        s_left = pygame.Surface((iw, ih), pygame.SRCALPHA)
+                        for y in range(ih):
+                            xs = [x for x in range(iw) if s_right.get_at((x, y))[3] > 60]
+                            if xs:
+                                min_x, max_x = min(xs), max(xs)
+                                for x in range(min_x + 1, max_x):
+                                    s_left.set_at((x, y), (255, 220, 120, 255))
+                        s_left.blit(s_right, (0, 0))
 
-    f_title, f_icon, f_btn, f_small, buttons, s_rect, lang_btns = get_layout(screen)
+                        combo = pygame.Surface((iw * 2 + 4, ih), pygame.SRCALPHA)
+                        combo.blit(s_left, (0, 0))
+                        combo.blit(s_right, (iw + 4, 0))
+                        mode_icons[m_id] = combo
+                    else:
+                        icon_surf = f_icon.render(icon_txt, True, (255, 220, 120))
+                        if icon_surf.get_width() > 0 and icon_surf.get_height() > 0:
+                            mode_icons[m_id] = icon_surf
+                except Exception:
+                    pass
+
+        return f_title, f_icon, f_btn, f_small, btns, s_rect, lang_btns, mode_icons
+
+    f_title, f_icon, f_btn, f_small, buttons, s_rect, lang_btns, mode_icons = get_layout(screen)
     clock = pygame.time.Clock()
 
     while True:
@@ -338,42 +406,44 @@ def select_mode(gui=None):
             pygame.draw.rect(screen, bg, rect, border_radius=10)
             pygame.draw.rect(screen, bdr, rect, 3 if hovered else 1, border_radius=10)
 
-            # Draw Hand-Crafted Vector Icons (Emoji-like)
+            # Draw Mode Icon (Emoji from test_emoji.py, with vector fallback)
             ix, iy = rect.centerx, rect.centery - 20
 
-            if m_id == MODE_STANDARD:
-                pygame.draw.circle(screen, (10, 10, 10), (ix-12, iy), 9)
-                pygame.draw.circle(screen, (180, 180, 180), (ix-12, iy), 9, 1) # visible rim for black stone
-                pygame.draw.circle(screen, (245, 245, 245), (ix+12, iy), 9)
-            elif m_id == MODE_DECAY:
-                # 🪫 Battery Icon
-                pygame.draw.rect(screen, (100, 100, 100), (ix-12, iy-6, 24, 12), 2, border_radius=2)
-                pygame.draw.rect(screen, (100, 100, 100), (ix+12, iy-3, 3, 6))
-                pygame.draw.rect(screen, (200, 50, 50), (ix-10, iy-4, 5, 8)) # Low charge red
-            elif m_id == MODE_POWER:
-                # 🪄 Magic Wand
-                pygame.draw.line(screen, (100, 70, 50), (ix-10, iy+10), (ix+5, iy-5), 4) # handle
-                pygame.draw.circle(screen, (255, 255, 255), (ix+8, iy-8), 4) # tip
-                pygame.draw.circle(screen, (255, 255, 0), (ix+8, iy-8), 6, 1) # glow
-            elif m_id == MODE_STAR:
-                # 🌠 Shooting Star
-                pygame.draw.polygon(screen, (255, 150, 50), [(ix-5,iy+5), (ix-25,iy+20), (ix-10,iy+30), (ix,iy+10)])
-                import math
-                pts = []
-                for j in range(10):
-                    rr = 12 if j % 2 == 0 else 5
-                    ang = math.radians(j * 36 - 90)
-                    pts.append((ix + rr * math.cos(ang), iy + rr * math.sin(ang)))
-                pygame.draw.polygon(screen, (255, 230, 50), pts)
-            elif m_id == MODE_LIMITLESS:
-                # ♾️ Infinity symbol
-                pygame.draw.circle(screen, (150, 210, 255), (ix-10, iy), 10, 2)
-                pygame.draw.circle(screen, (150, 210, 255), (ix+10, iy), 10, 2)
-            elif m_id == MODE_EVERYTHING:
-                # 🔥 Fire Emoji Replica
-                pygame.draw.ellipse(screen, (220, 50, 20), (ix-12, iy-10, 24, 30))
-                pygame.draw.ellipse(screen, (255, 150, 20), (ix-8, iy-2, 16, 20))
-                pygame.draw.ellipse(screen, (255, 230, 50), (ix-4, iy+6, 8, 10))
+            icon_surf = mode_icons.get(m_id)
+            if icon_surf:
+                screen.blit(icon_surf, icon_surf.get_rect(center=(ix, iy)))
+            else:
+                if m_id == MODE_STANDARD:
+                    pygame.draw.circle(screen, (255, 220, 120), (ix-12, iy), 9)
+                    pygame.draw.circle(screen, (255, 220, 120), (ix+12, iy), 9, 2)
+                elif m_id == MODE_DECAY:
+                    # 🪫 Battery Icon
+                    pygame.draw.rect(screen, (100, 100, 100), (ix-12, iy-6, 24, 12), 2, border_radius=2)
+                    pygame.draw.rect(screen, (100, 100, 100), (ix+12, iy-3, 3, 6))
+                    pygame.draw.rect(screen, (200, 50, 50), (ix-10, iy-4, 5, 8)) # Low charge red
+                elif m_id == MODE_POWER:
+                    # 🪄 Magic Wand
+                    pygame.draw.line(screen, (100, 70, 50), (ix-10, iy+10), (ix+5, iy-5), 4) # handle
+                    pygame.draw.circle(screen, (255, 255, 255), (ix+8, iy-8), 4) # tip
+                    pygame.draw.circle(screen, (255, 255, 0), (ix+8, iy-8), 6, 1) # glow
+                elif m_id == MODE_STAR:
+                    # 🌠 Shooting Star
+                    pygame.draw.polygon(screen, (255, 150, 50), [(ix-5,iy+5), (ix-25,iy+20), (ix-10,iy+30), (ix,iy+10)])
+                    pts = []
+                    for j in range(10):
+                        rr = 12 if j % 2 == 0 else 5
+                        ang = math.radians(j * 36 - 90)
+                        pts.append((ix + rr * math.cos(ang), iy + rr * math.sin(ang)))
+                    pygame.draw.polygon(screen, (255, 230, 50), pts)
+                elif m_id == MODE_LIMITLESS:
+                    # ♾️ Infinity symbol
+                    pygame.draw.circle(screen, (150, 210, 255), (ix-10, iy), 10, 2)
+                    pygame.draw.circle(screen, (150, 210, 255), (ix+10, iy), 10, 2)
+                elif m_id == MODE_EVERYTHING:
+                    # 🔥 Fire Emoji Replica
+                    pygame.draw.ellipse(screen, (220, 50, 20), (ix-12, iy-10, 24, 30))
+                    pygame.draw.ellipse(screen, (255, 150, 20), (ix-8, iy-2, 16, 20))
+                    pygame.draw.ellipse(screen, (255, 230, 50), (ix-4, iy+6, 8, 10))
 
             t_surf = f_btn.render(i18n.get("mode_" + m_id), True, (210, 200, 180))
             screen.blit(t_surf, t_surf.get_rect(center=(rect.centerx, rect.centery + 30)))
@@ -420,7 +490,7 @@ def select_mode(gui=None):
                     sys.exit()
                 if event.key == pygame.K_l:
                     i18n.cycle()
-                    f_title, f_icon, f_btn, f_small, buttons, s_rect, lang_btns = get_layout(screen)
+                    f_title, f_icon, f_btn, f_small, buttons, s_rect, lang_btns, mode_icons = get_layout(screen)
 
             if event.type == pygame.VIDEORESIZE:
                 if gui:
@@ -428,14 +498,14 @@ def select_mode(gui=None):
                     screen = gui.screen
                 else:
                     screen = pygame.display.set_mode((event.w, event.h), pygame.RESIZABLE)
-                f_title, f_icon, f_btn, f_small, buttons, s_rect, lang_btns = get_layout(screen)
+                f_title, f_icon, f_btn, f_small, buttons, s_rect, lang_btns, mode_icons = get_layout(screen)
 
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 # Language click
                 for lang, rect in lang_btns.items():
                     if rect.collidepoint(event.pos):
                         i18n.set_lang(lang)
-                        f_title, f_icon, f_btn, f_small, buttons, s_rect, lang_btns = get_layout(screen)
+                        f_title, f_icon, f_btn, f_small, buttons, s_rect, lang_btns, mode_icons = get_layout(screen)
                         break
 
                 # Slider click

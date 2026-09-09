@@ -35,7 +35,8 @@ STRINGS = {
         "suggest":      "Suggestion shown",
         "language":     "Language",
         "power":        "Power",
-        "activate_right_click": "(Right Click to Activate)",
+        "activate_right_click": "(Right Click / Tab: Activate)",
+        "cycle_hint":           "(Wheel / Tab / 1-3: Switch)",
 
         # New Modes & Features
         "mode_Standard":  "Standard",
@@ -52,12 +53,74 @@ STRINGS = {
         "aide_off":       "   AIDE: OFF   ",
         "hole_warning":   " Meteor inbound!",
         "guide_title":    "Game Mode Guide",
-        "guide_Standard": "[Standard]\nWin by 5 in a row or by 10 captures.\nConstraints:\n- No double-threes.\n- A winning line can still be broken by capture.",
-        "guide_Decay":    "[Decay]\nStones disappear after 10 turns.",
-        "guide_Power":    "[Power Stones]\nUnlock powers through captures.\n- Bomb (*): Clears adjacent stones.\n- Cross (+): Clears opponent stones in a cross (range 2).\n- Diagonal (X): Clears opponent stones in diagonals (range 2).",
-        "guide_Star":     "[Shooting Star]\nA star event creates either a hole or a color-flip stone.\nHoles can be filled by placing a stone on them.",
-        "guide_Standard Unlimited": "[Standard Unlimited]\nStandard rules without extra constraints.",
-        "guide_Everything": "[Everything]\nDecay + Power + Shooting Star",
+        "guide_close":    "[Click outside or press G to close]",
+        "guide_Standard": (
+            "[Standard Rules (42 Subject)]\n"
+            "• Win Conditions:\n"
+            "  - Align 5 consecutive stones of your color, OR\n"
+            "  - Capture 10 opponent stones (5 pairs).\n"
+            "• Custodian Capture Rule:\n"
+            "  - Flank a pair of opponent stones between two of your stones:\n"
+            "    e.g., [X] [O] [O] [X] -> the two [O] stones are captured and removed!\n"
+            "  - Only exact pairs of 2 stones can be captured (never 1, never 3+).\n"
+            "  - Moving between opponent stones does NOT capture yourself.\n"
+            "• Double Free-Three (Double-Three) Restriction:\n"
+            "  - Creating two simultaneous free-threes is strictly forbidden.\n"
+            "  - Exception: Legal if the move also performs a capture!\n"
+            "• Endgame Capture (Breaking 5-in-a-Row):\n"
+            "  - Aligning 5 stones only wins if the opponent cannot break the line\n"
+            "    by capturing a pair from it, or counter-win with their 10th capture.\n"
+            "  - If opponent has no such counter, the 5-in-a-row wins immediately."
+        ),
+        "guide_Decay": (
+            "[Decay Mode]\n"
+            "• Stone Lifespan:\n"
+            "  - Every stone placed has a limited lifespan of 10 turns.\n"
+            "  - Stones gradually age and fade, vanishing when expired!\n"
+            "• Tactical Tip:\n"
+            "  - Strike swiftly before your constructed winning lines dissolve!"
+        ),
+        "guide_Power": (
+            "[Power Stones Mode]\n"
+            "• Unlock Super Powers:\n"
+            "  - Capture 5 individual stones to unlock devastating abilities!\n"
+            "• Controls & Switching:\n"
+            "  - Right-Click: Toggle activate / cancel current power.\n"
+            "  - Mouse Wheel or Tab: Cycle through available powers.\n"
+            "  - Keys [1], [2], [3]: Select a power directly.\n"
+            "• Power Arsenal:\n"
+            "  - [1] 💣 Bomb (*): Blasts a 3x3 square, clearing all stones & craters.\n"
+            "  - [2] ➕ Cross (+): Clears enemy stones along cross lines (range 2).\n"
+            "  - [3] ✖️ Diagonal (X): Clears enemy stones along diagonals (range 2)."
+        ),
+        "guide_Star": (
+            "[Shooting Star Mode]\n"
+            "• Cosmic Events:\n"
+            "  - Every few turns, a shooting star impacts at random locations!\n"
+            "• Impact Types:\n"
+            "  - 🕳️ Meteor Crater: Blasts a hole blocking stone placement.\n"
+            "    (Can be repaired by placing a stone directly onto it).\n"
+            "  - 💫 Color-Flip Stone: Emits an energy pulse, inverting the\n"
+            "    colors of all adjacent opponent stones!"
+        ),
+        "guide_Standard Unlimited": (
+            "[Standard Unlimited Mode]\n"
+            "• Objective:\n"
+            "  - Align 5 stones in a row or capture 10 opponent stones.\n"
+            "• Unlimited Rules:\n"
+            "  - Classic Gomoku without the Double Free-Three restriction.\n"
+            "  - Freely place stones and create open threes without penalties."
+        ),
+        "guide_Everything": (
+            "[Everything Mode (Chaos Battle)]\n"
+            "• The Ultimate Gomoku Showdown!\n"
+            "  All special mechanics are simultaneously active:\n"
+            "  1. 🪫 Decay: Stones fade and vanish after 10 turns.\n"
+            "  2. 🪄 Power Stones: Capture 5 stones to unlock Bomb, Cross & Diag!\n"
+            "  3. 🌠 Shooting Star: Meteors create craters & color flips!\n"
+            "• Tactical Tip:\n"
+            "  - Balance rapid attacks, power stones, and vanishing chains to win!"
+        ),
     },
     "FR": {
         "title":        "GOMOKU",
@@ -81,7 +144,8 @@ STRINGS = {
         "suggest":      "Suggestion affichee",
         "language":     "Langue",
         "power":        "Pouvoir",
-        "activate_right_click": "(Clic droit pour activer)",
+        "activate_right_click": "(Clic droit / Tab: Activer)",
+        "cycle_hint":           "(Molette / Tab / 1-3: Changer)",
 
         # New Modes & Features
         "mode_Standard":  "Standard",
@@ -98,12 +162,74 @@ STRINGS = {
         "aide_off":       "   AIDE: OFF   ",
         "hole_warning":   " Meteore en approche!",
         "guide_title":    "Guide des Modes",
-        "guide_Standard": "[Standard]\nGagnez avec 5 pierres alignées ou 10 captures.\nContraintes :\n- Pas de double-trois.\n- Une ligne gagnante peut encore être cassée par capture.",
-        "guide_Decay":    "[Decay]\nStones disappear after 10 turns.",
-        "guide_Power":    "[Power Stones]\nUnlock powers through captures.\n- Bomb (*): Clears adjacent stones.\n- Cross (+): Clears opponent stones in a cross (range 2).\n- Diagonal (X): Clears opponent stones in diagonals (range 2).",
-        "guide_Star":     "[Shooting Star]\nA star event creates either a hole or a color-flip stone.\nHoles can be filled by placing a stone on them.",
-        "guide_Standard Unlimited": "[Standard Unlimited]\nStandard rules without extra constraints.",
-        "guide_Everything": "[Everything]\nDecay + Power + Shooting Star",
+        "guide_close":    "[Cliquer à l'extérieur ou appuyer sur G pour fermer]",
+        "guide_Standard": (
+            "[Règles Standard (Sujet 42)]\n"
+            "• Conditions de Victoire :\n"
+            "  - Aligner 5 pierres consécutives de votre couleur, OU\n"
+            "  - Capturer 10 pierres adverses (5 paires).\n"
+            "• Règle de Capture (Prise par Encadrement) :\n"
+            "  - Encadrez exactement une paire ennemie entre deux de vos pierres :\n"
+            "    ex. [X] [O] [O] [X] -> les deux pierres [O] sont capturées et retirées !\n"
+            "  - Seules les paires exactes de 2 pierres peuvent être capturées.\n"
+            "  - Se poser volontairement entre deux pierres ennemies ne vous capture pas.\n"
+            "• Règle des Deux Trois Libres (Double-Trois) :\n"
+            "  - Il est interdit de poser une pierre créant deux trois libres simultanés.\n"
+            "  - Exception : Coup autorisé s'il réalise une capture en même temps !\n"
+            "• Capture de Fin de Partie (Casser le 5-en-Ligne) :\n"
+            "  - Aligner 5 pierres ne gagne que si l'adversaire ne peut pas le casser\n"
+            "    en capturant une paire, ou contre-attaquer avec sa 10e pierre.\n"
+            "  - Sans contre-attaque possible, la victoire est immédiate."
+        ),
+        "guide_Decay": (
+            "[Mode Décadence]\n"
+            "• Durée de Vie des Pierres :\n"
+            "  - Chaque pierre posée a une durée de vie limitée à 10 tours.\n"
+            "  - Les pierres vieillissent et disparaissent automatiquement !\n"
+            "• Conseil Tactique :\n"
+            "  - Attaquez vite avant que vos alignements gagnants ne s'effacent !"
+        ),
+        "guide_Power": (
+            "[Mode Pierres de Pouvoir]\n"
+            "• Déblocage des Compétences :\n"
+            "  - Capturez 5 pierres pour débloquer des super pouvoirs !\n"
+            "• Commandes & Changement :\n"
+            "  - Clic droit : Activer / annuler le pouvoir sélectionné.\n"
+            "  - Molette ou Tab : Faire défiler les pouvoirs disponibles.\n"
+            "  - Touches [1], [2], [3] : Sélectionner directement un pouvoir.\n"
+            "• Arsenal de Pouvoirs :\n"
+            "  - [1] 💣 Bombe (*) : Détruit un carré 3x3 (pierres et cratères).\n"
+            "  - [2] ➕ Croix (+) : Élimine les pierres ennemies en croix (portée 2).\n"
+            "  - [3] ✖️ Diagonale (X) : Élimine les pierres ennemies en diagonale (portée 2)."
+        ),
+        "guide_Star": (
+            "[Mode Étoile Filante]\n"
+            "• Événements Cosmiques :\n"
+            "  - Des étoiles filantes s'écrasent régulièrement sur le plateau !\n"
+            "• Types d'Impacts :\n"
+            "  - 🕳️ Cratère de Météore : Crée un trou infranchissable.\n"
+            "    (Peut être réparé en y posant une pierre directement).\n"
+            "  - 💫 Pierre d'Inversion : Émet une onde qui inverse\n"
+            "    la couleur des pierres ennemies adjacentes !"
+        ),
+        "guide_Standard Unlimited": (
+            "[Mode Standard Sans Limite]\n"
+            "• Objectif :\n"
+            "  - Aligner 5 pierres ou capturer 10 pierres adverses.\n"
+            "• Règles Sans Limite :\n"
+            "  - Gomoku classique sans restriction de Double-Trois libre.\n"
+            "  - Posez librement vos pierres sans pénalité de coup interdit."
+        ),
+        "guide_Everything": (
+            "[Mode Tout (Bataille Chaotique)]\n"
+            "• L'Épreuve Ultime de Gomoku !\n"
+            "  Toutes les mécaniques spéciales sont actives en même temps :\n"
+            "  1. 🪫 Décadence : Les pierres s'effacent après 10 tours.\n"
+            "  2. 🪄 Pierres de Pouvoir : 5 captures débloquent Bombe, Croix & Diag !\n"
+            "  3. 🌠 Étoile Filante : Cratères de météores et inversions de couleur !\n"
+            "• Conseil Tactique :\n"
+            "  - Jonglez entre attaques vives, pouvoirs et pierres éphémères pour vaincre !"
+        ),
     },
     "ZH": {
         "title":        "五子棋",
@@ -127,7 +253,8 @@ STRINGS = {
         "suggest":      "建議走法已顯示",
         "language":     "語言",
         "power":        "技能",
-        "activate_right_click": "（右鍵啟用）",
+        "activate_right_click": "（右鍵或按 Tab 啟用）",
+        "cycle_hint":           "（滾輪 / Tab / 1-3 切換）",
 
         # New Modes & Features
         "mode_Standard":  "標準模式",
@@ -144,12 +271,71 @@ STRINGS = {
         "aide_off":       "   輔助: 關閉   ",
         "hole_warning":   " 流星接近中!",
         "guide_title":    "遊戲模式指南",
-        "guide_Standard": "[標準]\n連成 5 子或吃掉 10 子即可獲勝。\n限制：\n- 禁止雙三。\n- 獲勝連線仍能被吃子打斷。",
-        "guide_Decay":    "[風化]\n棋子在 10 回合後消失。",
-        "guide_Power":    "[超能石]\n吃子以解鎖技能。\n- 炸彈 (*)：清除周圍相鄰棋子。\n- 十字 (+)：清除十字方向敵方棋子（距離 2）。\n- 斜角 (X)：清除對角方向敵方棋子（距離 2）。",
-        "guide_Star":     "[流星]\n流星事件會生成洞或變色棋子。\n洞可以落子填補。",
-        "guide_Standard Unlimited": "[標準無限制]\n使用標準規則，移除額外限制。",
-        "guide_Everything": "[大亂鬥]\n風化 + 超能 + 流星",
+        "guide_close":    "（點擊任意處或按 G 鍵關閉）",
+        "guide_Standard": (
+            "[標準模式規則（42 官方規範）]\n"
+            "• 獲勝條件：\n"
+            "  - 連續連成 5 顆同色棋子，或\n"
+            "  - 吃掉對手 10 顆棋子（累計 5 對）。\n"
+            "• 夾吃吃子規則（Custodian Capture）：\n"
+            "  - 用兩顆己方棋子緊緊夾住對手的「恰好一對（2顆）」棋子：\n"
+            "    例如：[黑] [白] [白] [黑] -> 兩顆被夾住的 [白] 棋將被吃掉並移出棋盤！\n"
+            "  - 每次只能夾吃 2 顆（單顆或 3 顆以上無法被吃）。\n"
+            "  - 自己主動走進對手兩子之間不會被吃。\n"
+            "• 雙活三禁手（雙三限制）：\n"
+            "  - 嚴禁一手棋同時形成兩個活三（兩端皆有成五空間的連續或跳三）。\n"
+            "  - 豁免條款：若該步伴隨吃子，則不受雙三禁手限制！\n"
+            "• 終局破五連（吃子反殺機制）：\n"
+            "  - 連成五子時，若對手下一步能藉由夾吃破壞五連線，或藉此吃滿 10 子反殺，\n"
+            "    對局將保留一步給對手防守反擊；若對手無法反制，則連五方立即獲勝。"
+        ),
+        "guide_Decay": (
+            "[風化模式]\n"
+            "• 棋子壽命限制：\n"
+            "  - 盤面上落下的每顆棋子皆有 10 回合的有效壽命。\n"
+            "  - 棋子會隨著時間逐漸風化褪色，到達 10 回合後會自動從棋盤上消失！\n"
+            "• 戰術提示：\n"
+            "  - 把握進攻節奏，若拖延太久，已構建的連線優勢將化為烏有！"
+        ),
+        "guide_Power": (
+            "[超能石模式]\n"
+            "• 技能解鎖：\n"
+            "  - 累計吃掉 5 顆棋子，即可解鎖威力強大的超能技能！\n"
+            "• 操作與切換方式：\n"
+            "  - 滑鼠右鍵：切換啟用 / 取消當前選取的技能。\n"
+            "  - 滑鼠滾輪 或 Tab 鍵：循環切換不同的超能技能。\n"
+            "  - 數字鍵 [1]、[2]、[3]：直接選取對應技能。\n"
+            "• 技能效果清單：\n"
+            "  - [1] 💣 炸彈 (*)：引爆 3×3 範圍，摧毀內部所有棋子與隕石坑。\n"
+            "  - [2] ➕ 十字 (+)：摧毀十字方向距離 2 範圍內的所有敵方棋子。\n"
+            "  - [3] ✖️ 斜向 (X)：摧毀對角方向距離 2 範圍內的所有敵方棋子。"
+        ),
+        "guide_Star": (
+            "[流星模式]\n"
+            "• 天體隨機事件：\n"
+            "  - 每隔數個回合，天外流星將隨機劃破天際撞擊棋盤！\n"
+            "• 撞擊產物類型：\n"
+            "  - 🕳️ 隕石坑洞：在落點形成無法直接通行的凹坑（可透過主動落子填補修復）。\n"
+            "  - 💫 變色異石：釋放宇宙能量脈衝，將周圍相鄰敵方棋子的顏色逆轉為己方！"
+        ),
+        "guide_Standard Unlimited": (
+            "[標準無限制模式]\n"
+            "• 獲勝目標：\n"
+            "  - 連成 5 顆同色棋子，或吃掉對手 10 顆棋子。\n"
+            "• 無限制規則特性：\n"
+            "  - 回歸最純粹的五子棋對弈，完全移除「雙活三（雙三）」禁手限制！\n"
+            "  - 您可以不受拘束自由落子，隨意構造雙活三進行多線進攻。"
+        ),
+        "guide_Everything": (
+            "[大亂鬥模式（終極混戰）]\n"
+            "• 五子棋的終極極限對決！\n"
+            "  三大特殊機制在棋盤上同時全面啟用：\n"
+            "  1. 🪫 風化機制：每顆落下的棋子在 10 回合後會自動消散。\n"
+            "  2. 🪄 超能石機制：吃滿 5 顆子可解鎖使用炸彈 (*)、十字 (+) 與斜向 (X) 毀滅技能！\n"
+            "  3. 🌠 流星機制：宇宙天體隨機墜落，砸出隕石坑洞或引爆顏色反轉脈衝！\n"
+            "• 戰術提示：\n"
+            "  - 在瞬息萬變的棋盤上，必須同時兼顧快速進攻、技能釋放與消失時間才能存活獲勝！"
+        ),
     },
 }
 

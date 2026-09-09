@@ -117,23 +117,29 @@ class PowerModifier(GameModifier):
                 for dc in [-1, 0, 1]:
                     if dr == 0 and dc == 0: continue
                     r, c = row+dr, col+dc
-                    if 0<=r<19 and 0<=c<19 and state.board[r][c] != EMPTY:
+                    if 0 <= r < BOARD_SIZE and 0 <= c < BOARD_SIZE and state.board[r][c] != EMPTY:
                         cleared.append((r,c))
         elif power_type == POWER_CROSS:
             for d in [-2,-1,1,2]:
                 for r, c in [(row+d, col), (row, col+d)]:
-                    if 0<=r<19 and 0<=c<19 and state.board[r][c] == opponent:
+                    if 0 <= r < BOARD_SIZE and 0 <= c < BOARD_SIZE and state.board[r][c] == opponent:
                         cleared.append((r,c))
         elif power_type == POWER_DIAGONAL:
             for d in [-2,-1,1,2]:
                 for r, c in [(row+d, col+d), (row+d, col-d)]:
-                    if 0<=r<19 and 0<=c<19 and state.board[r][c] == opponent:
+                    if 0 <= r < BOARD_SIZE and 0 <= c < BOARD_SIZE and state.board[r][c] == opponent:
                         cleared.append((r,c))
 
         for r, c in cleared:
             state.board[r][c] = EMPTY
-            if (r,c) in state.stones_ply:
-                del state.stones_ply[(r,c)]
+            if (r, c) in state.holes:
+                state.holes.remove((r, c))
+            if (r, c) in state.hole_forecast:
+                del state.hole_forecast[(r, c)]
+            if (r, c) in state.blipping_stones:
+                del state.blipping_stones[(r, c)]
+            if (r, c) in state.stones_ply:
+                del state.stones_ply[(r, c)]
 
         if state.individual_captures[player] >= 5:
             state.individual_captures[player] = max(0, state.individual_captures[player] - 5)

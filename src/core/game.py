@@ -2,7 +2,8 @@ import random
 from config.game import (BOARD_SIZE, EMPTY, BLACK, WHITE, HOLE, MAX_CAPTURES)
 from config.bonus import (DECAY_LIFESPAN, POWER_BOMB, POWER_CROSS, POWER_DIAGONAL, STAR_MIN_PLY, STAR_MAX_PLY, STAR_WARN_PLY)
 from rules.bonus import get_rules_for_mode
-from rules.rules import in_bounds, check_winner, has_five, is_double_free_three
+from rules.rules import (in_bounds, check_winner, has_five, has_any_five,
+                         get_five_cells_through, would_capture, is_double_free_three)
 
 class Game:
     def __init__(self, rules=None, state=None, modifiers=None):
@@ -61,6 +62,10 @@ class Game:
     @winner.setter
     def winner(self, value): self.state.winner = value
     @property
+    def pending_win(self): return self.state.pending_win
+    @pending_win.setter
+    def pending_win(self, value): self.state.pending_win = value
+    @property
     def last_move(self): return self.state.last_move
     @last_move.setter
     def last_move(self, value): self.state.last_move = value
@@ -93,6 +98,7 @@ class Game:
             'stones_ply': self.stones_ply.copy(),
             'current_player': self.current_player,
             'winner': self.winner,
+            'pending_win': self.pending_win,
             'last_move': self.last_move,
         })
 
@@ -111,6 +117,7 @@ class Game:
         self.stones_ply = state['stones_ply']
         self.current_player = state['current_player']
         self.winner = state['winner']
+        self.pending_win = state.get('pending_win', None)
         self.last_move = state['last_move']
         return True
 
@@ -140,7 +147,7 @@ class Game:
                 if mod.on_stone_placed(self, self.state, row, col, player, power_type):
                     override = True
                     break
-            
+
             if not override:
                 self._apply_captures(row, col, player)
 
@@ -150,7 +157,7 @@ class Game:
         if not self.winner:
             for mod in self.modifiers:
                 mod.on_turn_end(self, self.state)
-        
+
         self.current_player = WHITE if player == BLACK else BLACK
         return True
 
@@ -159,7 +166,11 @@ class Game:
         if not (0 <= row < BOARD_SIZE and 0 <= col < BOARD_SIZE): return False
         if self.rules.shooting_star and (row, col) in self.holes: pass
         elif self.board[row][col] != EMPTY or (row, col) in self.hole_forecast: return False
-        if self.rules.double_free_three and is_double_free_three(self.board, row, col, player, self.holes): return False
+        if self.rules.double_free_three:
+            # Exception: Double free-three is allowed if the move captures a pair
+            if not would_capture(self.board, row, col, player, self.holes):
+                if is_double_free_three(self.board, row, col, player, self.holes):
+                    return False
         return True
 
     def _apply_captures(self, row, col, player):
@@ -183,10 +194,112 @@ class Game:
     def get_captures(self, player):
         return self.captures[player]
 
+    def _can_opponent_break_or_win(self, player):
+        """
+        Check if opponent can counter the five-in-a-row on their next turn:
+        1. Opponent has 4 pairs captured and can make any capture to win (10 stones).
+        2. Opponent can capture a pair that breaks player's five-in-a-row.
+        """
+        opponent = WHITE if player == BLACK else BLACK
+        opp_needs_one_pair = (self.captures[opponent] == MAX_CAPTURES - 1)
+
+        winning_cells = set()
+        for r in range(BOARD_SIZE):
+            for c in range(BOARD_SIZE):
+                if self.board[r][c] == player and (r, c) not in self.holes:
+                    cells = get_five_cells_through(self.board, r, c, player, self.holes)
+                    winning_cells.update(cells)
+
+        if not winning_cells:
+            return False
+
+        directions = [(0, 1), (1, 0), (1, 1), (1, -1)]
+
+        # Check candidate opponent moves (only empty cells adjacent to player stones can form a capture of player)
+        adj_candidates = set()
+        for wr, wc in winning_cells:
+            for dr, dc in [(-1,0),(1,0),(0,-1),(0,1),(-1,-1),(-1,1),(1,-1),(1,1)]:
+                nr, nc = wr + dr, wc + dc
+                if (0 <= nr < BOARD_SIZE and 0 <= nc < BOARD_SIZE and self.board[nr][nc] == EMPTY
+                        and (nr, nc) not in self.holes and (nr, nc) not in self.hole_forecast):
+                    adj_candidates.add((nr, nc))
+
+        # If opponent needs 1 pair to win, they could capture anywhere adjacent to any player stone
+        if opp_needs_one_pair:
+            for r in range(BOARD_SIZE):
+                for c in range(BOARD_SIZE):
+                    if self.board[r][c] == player:
+                        for dr, dc in [(-1,0),(1,0),(0,-1),(0,1),(-1,-1),(-1,1),(1,-1),(1,1)]:
+                            nr, nc = r + dr, c + dc
+                            if (0 <= nr < BOARD_SIZE and 0 <= nc < BOARD_SIZE and self.board[nr][nc] == EMPTY
+                                    and (nr, nc) not in self.holes and (nr, nc) not in self.hole_forecast):
+                                adj_candidates.add((nr, nc))
+
+        for r, c in adj_candidates:
+            if not would_capture(self.board, r, c, opponent, self.holes):
+                continue
+
+            if opp_needs_one_pair:
+                return True
+
+            # Check if capture removes stone from winning_cells and breaks 5-in-a-row
+            captured_pairs = []
+            for dr, dc in directions:
+                for sign in (1, -1):
+                    r1, c1 = r + sign * dr, c + sign * dc
+                    r2, c2 = r + sign * 2 * dr, c + sign * 2 * dc
+                    r3, c3 = r + sign * 3 * dr, c + sign * 3 * dc
+                    if (in_bounds(r1, c1, self.holes) and in_bounds(r2, c2, self.holes) and in_bounds(r3, c3, self.holes)
+                            and self.board[r1][c1] == player and self.board[r2][c2] == player and self.board[r3][c3] == opponent):
+                        captured_pairs.append(((r1, c1), (r2, c2)))
+
+            for p1, p2 in captured_pairs:
+                if p1 in winning_cells or p2 in winning_cells:
+                    # Temporarily apply capture to verify if all 5-in-a-row lines are broken
+                    self.board[r][c] = opponent
+                    self.board[p1[0]][p1[1]] = EMPTY
+                    self.board[p2[0]][p2[1]] = EMPTY
+
+                    still_has_five = has_any_five(self.board, player, self.holes)
+
+                    # Revert
+                    self.board[r][c] = EMPTY
+                    self.board[p1[0]][p1[1]] = player
+                    self.board[p2[0]][p2[1]] = player
+
+                    if not still_has_five:
+                        return True
+        return False
+
     def _check_winner(self, row, col, player):
-        win = check_winner(self.captures, player)
-        if win: return win
-        if has_five(self.board, row, col, player, self.holes): return player
+        # 1. Win by 10 captures (5 pairs) - immediate win
+        if self.captures[player] >= MAX_CAPTURES:
+            self.pending_win = None
+            return player
+
+        opponent = WHITE if player == BLACK else BLACK
+
+        # 2. If opponent had a pending five from their previous turn:
+        if self.pending_win is not None and self.pending_win == opponent:
+            if has_any_five(self.board, opponent, self.holes):
+                # Player failed to break opponent's five; opponent wins!
+                winner = opponent
+                self.pending_win = None
+                return winner
+            else:
+                # Player successfully broke opponent's five
+                self.pending_win = None
+
+        # 3. Check if current player just formed a five-in-a-row
+        if has_five(self.board, row, col, player, self.holes):
+            # Endgame Capture rule: Can opponent break it or win by capture on their next turn?
+            if self._can_opponent_break_or_win(player):
+                self.pending_win = player
+                return None  # Give opponent 1 turn to counter
+            else:
+                self.pending_win = None
+                return player
+
         return None
 
     def check_winner_after_captures(self, player):
@@ -216,6 +329,7 @@ class Game:
             stones_ply=self.state.stones_ply.copy(),
             current_player=self.state.current_player,
             winner=self.state.winner,
+            pending_win=self.state.pending_win,
             last_move=self.state.last_move,
             history=[] # don't clone history for AI sim
         )
