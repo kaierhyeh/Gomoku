@@ -54,7 +54,7 @@ class GUI:
             self.screen = pygame.display.set_mode((self.win_w, self.win_h), pygame.RESIZABLE)
         else:
             self.screen = pygame.display.get_surface()
-        pygame.display.set_caption("Gomoku — 5eyes")
+        pygame.display.set_caption("Gomoku")
         self._load_fonts()
         self._panel_x   = PANEL_X_DEFAULT
         self.hover_pos  = None

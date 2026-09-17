@@ -10,16 +10,11 @@ An AI-powered Gomoku (五目, Five in a Row) game built with **Python** and **Py
 
 This project explores adversarial search, heuristic design, and the balance between search depth and computation time.
 
-### Sample Board State
-<table>
-  <tr><td>·</td><td>·</td><td>·</td><td>·</td><td>·</td></tr>
-  <tr><td>·</td><td>●</td><td>●</td><td>●</td><td>·</td></tr>
-  <tr><td>·</td><td>·</td><td>○</td><td>·</td><td>·</td></tr>
-  <tr><td>·</td><td>·</td><td>○</td><td>·</td><td>·</td></tr>
-  <tr><td>·</td><td>·</td><td>·</td><td>·</td><td>·</td></tr>
-</table>
-
-*Black (●) has an Open Three — the AI identifies and scores this pattern.*
+<p align="center">
+  <img src="assets/img/demo1.jpg" alt="Gomoku Gameplay Preview" width="85%" />
+  <br/>
+  <em>Live Gameplay: Real-time AI thinking timer (&lt;0.5s), custodian capture tracking, and forbidden move diagnostics.</em>
+</p>
 
 ## ✨ Features
 
@@ -68,7 +63,7 @@ make
 
 ## 📚 Documentation
 - [Project Walkthrough & Architecture Guide](docs/walkthrough.md): Comprehensive guide to 42 Subject compliance, algorithm theory, and code reading order.
-- [Patch Notes & Changelog](docs/PATCH_NOTES.md): Full development history and milestone changelog from v1.0.0 to v1.6.0.
+- [Patch Notes & Changelog](docs/PATCH_NOTES.md): Full development history and milestone changelog from v1.0.0 to v1.3.3.
 
 
 <br/>
@@ -136,4 +131,4 @@ make
 
 ## 📚 專案文檔
 - [專案導讀與架構走讀 (Walkthrough)](docs/walkthrough.md)：由淺入深解析 42 Subject 規範、演算法理論、棋規狀態機與代碼閱讀順序。
-- [版本演進與補丁歷程 (Patch Notes)](docs/PATCH_NOTES.md)：從 v1.0.0 初版至 v1.6.0 的完整研發歷程與更新紀錄。
+- [版本演進與補丁歷程 (Patch Notes)](docs/PATCH_NOTES.md)：從 v1.0.0 初版至 v1.3.3 的完整研發歷程與更新紀錄。

@@ -314,7 +314,7 @@ def select_mode(gui=None):
     if gui is None:
         gui = GUI(WINDOW_WIDTH, WINDOW_HEIGHT)
     screen = gui.screen
-    pygame.display.set_caption("Gomoku - Select Mode")
+    pygame.display.set_caption("Gomoku")
 
     # Modes layout: 3x2 with your custom emojis!
     mode_options = [
