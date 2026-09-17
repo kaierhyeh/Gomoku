@@ -161,17 +161,34 @@ class Game:
         self.current_player = WHITE if player == BLACK else BLACK
         return True
 
-    def is_valid_move(self, row, col, player=None):
+    def get_move_error(self, row, col, player=None):
+        """
+        Return the specific error reason if (row, col) is not a legal move,
+        or None if the move is legal.
+        """
         if player is None: player = self.current_player
-        if not (0 <= row < BOARD_SIZE and 0 <= col < BOARD_SIZE): return False
-        if self.rules.shooting_star and (row, col) in self.holes: pass
-        elif self.board[row][col] != EMPTY or (row, col) in self.hole_forecast: return False
+        if not (0 <= row < BOARD_SIZE and 0 <= col < BOARD_SIZE):
+            return "out_of_bounds"
+
+        if self.rules.shooting_star and (row, col) in self.holes:
+            pass  # Allowed to repair hole in shooting star mode
+        else:
+            if (row, col) in self.holes:
+                return "meteor_crater"
+            if (row, col) in self.hole_forecast:
+                return "hole_forecast"
+            if self.board[row][col] != EMPTY:
+                return "occupied"
+
         if self.rules.double_free_three:
-            # Exception: Double free-three is allowed if the move captures a pair
             if not would_capture(self.board, row, col, player, self.holes):
                 if is_double_free_three(self.board, row, col, player, self.holes):
-                    return False
-        return True
+                    return "double_three"
+
+        return None
+
+    def is_valid_move(self, row, col, player=None):
+        return self.get_move_error(row, col, player) is None
 
     def _apply_captures(self, row, col, player):
         opponent = WHITE if player == BLACK else BLACK

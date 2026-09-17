@@ -66,6 +66,11 @@ make
 - **Average move time**: < 0.5 seconds
 - **Optimizations**: Move ordering, candidate filtering, iterative deepening, transposition table (Zobrist hashing)
 
+## 📚 Documentation
+- [Project Walkthrough & Architecture Guide](docs/walkthrough.md): Comprehensive guide to 42 Subject compliance, algorithm theory, and code reading order.
+- [Patch Notes & Changelog](docs/PATCH_NOTES.md): Full development history and milestone changelog from v1.0.0 to v1.6.0.
+
+
 <br/>
 
 ---
@@ -128,3 +133,7 @@ make
 - **搜尋深度**：≥ 10 層
 - **平均每手時間**：< 0.5 秒
 - **效能優化策略**：走法排序、候選過濾（僅搜尋棋子附近空位）、漸進式深化、Transposition Table (Zobrist Hash)
+
+## 📚 專案文檔
+- [專案導讀與架構走讀 (Walkthrough)](docs/walkthrough.md)：由淺入深解析 42 Subject 規範、演算法理論、棋規狀態機與代碼閱讀順序。
+- [版本演進與補丁歷程 (Patch Notes)](docs/PATCH_NOTES.md)：從 v1.0.0 初版至 v1.6.0 的完整研發歷程與更新紀錄。

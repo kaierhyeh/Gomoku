@@ -109,21 +109,57 @@ def quick_score_move(board, row, col, player, captures):
     score = 0
 
     # Offensive capture bonus
+    # 1. Offensive capture bonus (Immediate win if reaching 5 pairs)
     my_caps = _count_captures_for_scoring(board, row, col, player)
     if captures.get(player, 0) + my_caps >= 5:
         return SCORE["FIVE"]  # Immediate win by 10 captures!
+        return SCORE["FIVE"] * 10  # Immediate win by 10 captures!
     score += my_caps * 25000
 
     # Defensive capture blocking
+    # 2. Defensive capture blocking (Urgent defense if opponent could reach 5 pairs)
     opp_caps = _count_captures_for_scoring(board, row, col, opponent)
     if captures.get(opponent, 0) + opp_caps >= 5:
         score += SCORE["OPEN_FOUR"] * 2  # Must block opponent 10-capture win!
     else:
         score += opp_caps * 20000
+    opp_win_by_capture = (captures.get(opponent, 0) + opp_caps >= 5)
+
+    # 3. Line scan in all 4 directions
+    player_max_line = 0
+    opp_max_line = 0
+    player_line_sum = 0
+    opp_line_sum = 0
 
     for dr, dc in DIRECTIONS:
         score += _scan_line_score(board, row, col, dr, dc, player)
         score += _scan_line_score(board, row, col, dr, dc, opponent) * 1.05
+        p_score = _scan_line_score(board, row, col, dr, dc, player)
+        o_score = _scan_line_score(board, row, col, dr, dc, opponent)
+
+        if p_score > player_max_line:
+            player_max_line = p_score
+        if o_score > opp_max_line:
+            opp_max_line = o_score
+
+        player_line_sum += p_score
+        opp_line_sum += o_score
+
+    # Tier 1: Immediate win for current player (5-in-a-row)
+    # Absolute highest priority (10,000,000+), trumps all defensive threats
+    if player_max_line >= SCORE["FIVE"]:
+        return SCORE["FIVE"] * 10 + opp_line_sum
+
+    # Tier 2: Opponent immediate win threat (5-in-a-row or 10-capture win)
+    # Second highest priority (5,000,000 - 7,000,000)
+    if opp_max_line >= SCORE["FIVE"] or opp_win_by_capture:
+        score += SCORE["FIVE"] * 5
+
+    if not opp_win_by_capture:
+        score += opp_caps * 20000
+
+    # Tier 3: Positional line combinations (below 1,000,000)
+    score += int(player_line_sum * 1.05) + opp_line_sum
 
     return score
 

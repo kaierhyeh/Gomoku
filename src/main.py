@@ -1,3 +1,5 @@
+import os
+os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 import pygame
 import pygame.gfxdraw
 import sys
@@ -67,12 +69,20 @@ def run_game(mode_name=MODE_STANDARD, vs_mode=MODE_AI, gui=None):
                 gui.handle_resize(event.w, event.h)
 
             if event.type == pygame.KEYDOWN:
-                if event.key in (pygame.K_q, pygame.K_ESCAPE):
+                if event.key == pygame.K_q:
+                    pygame.quit()
+                    sys.exit()
+
+                if event.key == pygame.K_ESCAPE:
                     if gui.guide_open:
                         gui.close_guide()
                         continue
-                    pygame.quit()
-                    sys.exit()
+                    if power_active:
+                        power_active = False
+                        gui.set_status("")
+                        continue
+                    go_to_menu = True
+                    continue
 
                 if event.key == pygame.K_n:
                     # New Game / Restart
@@ -204,14 +214,19 @@ def run_game(mode_name=MODE_STANDARD, vs_mode=MODE_AI, gui=None):
                         gui.show_guide(guide_text)
                         continue
 
-                    # Board click (ignored when game over or AI thinking)
-                    if game.is_game_over() or ai_thinking:
-                        continue
-                    if vs_mode == MODE_AI and game.current_player == WHITE:
-                        continue
-
+                    # Board click handling with diagnostics and warnings
                     cell = gui.handle_click(event.pos)
                     if cell:
+                        if game.is_game_over():
+                            gui.show_warning(i18n.get("warn_game_over"))
+                            continue
+                        if ai_thinking:
+                            gui.show_warning(i18n.get("warn_ai_thinking"))
+                            continue
+                        if vs_mode == MODE_AI and game.current_player == WHITE:
+                            gui.show_warning(i18n.get("warn_not_your_turn"))
+                            continue
+
                         row, col = cell
                         p_type = power_types[power_idx] if power_active else None
 
@@ -232,6 +247,19 @@ def run_game(mode_name=MODE_STANDARD, vs_mode=MODE_AI, gui=None):
                             elif vs_mode == MODE_HUMAN:
                                 suggestion = ai_suggestion_engine.suggest_move(game)
                                 gui.set_status(i18n.get("suggest"))
+                        else:
+                            # Move was invalid: diagnose reason and show user warning
+                            err = game.get_move_error(row, col, game.current_player)
+                            if err == "double_three":
+                                gui.show_warning(i18n.get("warn_double_three"))
+                            elif err == "occupied":
+                                gui.show_warning(i18n.get("warn_occupied"))
+                            elif err == "hole_forecast":
+                                gui.show_warning(i18n.get("warn_hole_forecast"))
+                            elif err == "meteor_crater":
+                                gui.show_warning(i18n.get("warn_meteor_crater"))
+                            else:
+                                gui.show_warning(i18n.get("warn_occupied"))
 
         if go_to_menu:
             return select_mode(gui)
@@ -284,13 +312,9 @@ def select_mode(gui=None):
     Mode selection screen. Layout: 3x2 grid of buttons + AI/PvP Slider.
     """
     if gui is None:
-        pygame.init()
-        gui_screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.RESIZABLE)
-        pygame.display.set_caption("Gomoku - Select Mode")
-    else:
-        gui_screen = gui.screen
-
-    screen = gui_screen
+        gui = GUI(WINDOW_WIDTH, WINDOW_HEIGHT)
+    screen = gui.screen
+    pygame.display.set_caption("Gomoku - Select Mode")
 
     # Modes layout: 3x2 with your custom emojis!
     mode_options = [
@@ -493,11 +517,8 @@ def select_mode(gui=None):
                     f_title, f_icon, f_btn, f_small, buttons, s_rect, lang_btns, mode_icons = get_layout(screen)
 
             if event.type == pygame.VIDEORESIZE:
-                if gui:
-                    gui.handle_resize(event.w, event.h)
-                    screen = gui.screen
-                else:
-                    screen = pygame.display.set_mode((event.w, event.h), pygame.RESIZABLE)
+                gui.handle_resize(event.w, event.h)
+                screen = gui.screen
                 f_title, f_icon, f_btn, f_small, buttons, s_rect, lang_btns, mode_icons = get_layout(screen)
 
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -517,11 +538,8 @@ def select_mode(gui=None):
                 for i, (m_id, _) in enumerate(mode_options):
                     if buttons[i].collidepoint(event.pos):
                         vs_mode = vs_options[current_vs_idx][1]
-                        if gui:
-                            return run_game(m_id, vs_mode, gui)
-                        else:
-                            new_gui = GUI(screen.get_width(), screen.get_height())
-                            return run_game(m_id, vs_mode, new_gui)
+                        return run_game(m_id, vs_mode, gui)
 
 if __name__ == "__main__":
-    select_mode()
+    gui = GUI(WINDOW_WIDTH, WINDOW_HEIGHT)
+    select_mode(gui)

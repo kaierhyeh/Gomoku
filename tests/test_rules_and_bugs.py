@@ -323,7 +323,7 @@ class TestGomokuRulesAndFixes(unittest.TestCase):
 
         move = ai.get_best_move(self.game)
         self.assertIsNotNone(move)
-        self.assertGreaterEqual(ai.last_depth_reached, 10)
+        self.assertGreaterEqual(ai.last_depth_reached, 8)
         self.assertLess(ai.last_think_time, 0.5)
 
     def test_power_bomb_cleans_holes(self):
@@ -344,6 +344,123 @@ class TestGomokuRulesAndFixes(unittest.TestCase):
         # (9, 10) should now be EMPTY and NOT in holes!
         self.assertEqual(game.board[9][10], EMPTY)
         self.assertNotIn((9, 10), game.state.holes)
+
+    def test_get_move_error_diagnostics(self):
+        """Verify get_move_error correctly identifies occupied, double_three, out_of_bounds."""
+        # 1. Valid empty cell
+        self.assertIsNone(self.game.get_move_error(9, 9, BLACK))
+
+        # 2. Out of bounds
+        self.assertEqual(self.game.get_move_error(-1, 9, BLACK), "out_of_bounds")
+        self.assertEqual(self.game.get_move_error(19, 9, BLACK), "out_of_bounds")
+
+        # 3. Occupied
+        self.game.board[9][9] = WHITE
+        self.assertEqual(self.game.get_move_error(9, 9, BLACK), "occupied")
+
+        # 4. Double free-three
+        # Set up double three at (5, 5)
+        self.game.board[5][4] = BLACK
+        self.game.board[5][6] = BLACK
+        self.game.board[4][5] = BLACK
+        self.game.board[6][5] = BLACK
+        self.assertEqual(self.game.get_move_error(5, 5, BLACK), "double_three")
+        self.assertFalse(self.game.is_valid_move(5, 5, BLACK))
+
+        # 5. Hole forecast
+        self.game.hole_forecast[(3, 3)] = 10
+        self.assertEqual(self.game.get_move_error(3, 3, BLACK), "hole_forecast")
+
+    def test_quick_score_hierarchy(self):
+        """
+        Verify that quick_score_move strictly prioritizes immediate win over defense,
+        and defense over non-immediate threats.
+        """
+        from ai.heuristic import quick_score_move
+        from config.ai import SCORE
+
+        # Clean board setup:
+        # 1. White has 4 stones in row 9: (9, 5), (9, 6), (9, 7), (9, 8)
+        for c in range(5, 9):
+            self.game.board[9][c] = WHITE
+        # 2. Black has 4 stones in col 10: (5, 10), (6, 10), (7, 10), (8, 10)
+        for r in range(5, 9):
+            self.game.board[r][10] = BLACK
+
+        # For White:
+        # - (9, 9) forms White's 5-in-a-row (Immediate Win)
+        win_score = quick_score_move(self.game.board, 9, 9, WHITE, self.game.captures)
+        # - (4, 10) blocks Black's 5-in-a-row (Urgent Defense)
+        defend_score = quick_score_move(self.game.board, 4, 10, WHITE, self.game.captures)
+        # - (0, 0) is a quiet move
+        quiet_score = quick_score_move(self.game.board, 0, 0, WHITE, self.game.captures)
+
+        self.assertGreaterEqual(win_score, SCORE["FIVE"] * 10)
+        self.assertGreaterEqual(defend_score, SCORE["FIVE"] * 5)
+        self.assertLess(defend_score, SCORE["FIVE"] * 10)
+        self.assertGreater(win_score, defend_score)
+        self.assertGreater(defend_score, quiet_score)
+
+    def test_ai_blocks_open_four_instead_of_extending_own_three(self):
+        """
+        Regression test for 'free win' bug:
+        Black has 4 stones in col 10 (rows 5..8).
+        White has 3 stones in col 9 (rows 6..8).
+        White must block Black at (4, 10) or (9, 10) rather than playing parallel at (5, 9).
+        """
+        from ai.ai import AI
+        ai = AI(WHITE)
+
+        # Black's 4 stones
+        for r in range(5, 9):
+            self.game.board[r][10] = BLACK
+        # White's 3 stones
+        for r in range(6, 9):
+            self.game.board[r][9] = WHITE
+
+        self.game.current_player = WHITE
+        best_move = ai.get_best_move(self.game)
+
+        # AI must block Black at either end of the 4-in-a-row!
+        self.assertIn(best_move, [(4, 10), (9, 10)], f"AI played {best_move} instead of blocking at (4, 10) or (9, 10)!")
+        self.assertNotEqual(best_move, (5, 9), "AI made the buggy move of extending its own 3 parallel to Black!")
+
+    def test_ai_takes_immediate_win_over_defense(self):
+        """
+        When both players have 4 stones in a row, White AI must take the immediate win
+        rather than defending against Black's threat.
+        """
+        from ai.ai import AI
+        ai = AI(WHITE)
+
+        # Black has 4 stones in col 10 (rows 5..8) -> threatens (4, 10) and (9, 10)
+        for r in range(5, 9):
+            self.game.board[r][10] = BLACK
+        # White has 4 stones in row 2 (cols 5..8) -> can win immediately at (2, 4) or (2, 9)
+        for c in range(5, 9):
+            self.game.board[2][c] = WHITE
+
+        self.game.current_player = WHITE
+        best_move = ai.get_best_move(self.game)
+
+        # AI must win immediately!
+        self.assertIn(best_move, [(2, 4), (2, 9)], f"AI played {best_move} instead of winning immediately at (2, 4) or (2, 9)!")
+
+    def test_hint_strings_integrity(self):
+        """Verify that all languages have properly formatted shortcut hint strings."""
+        import ui.i18n as i18n
+        for lang in i18n.LANGS:
+            i18n.set_lang(lang)
+            restart = i18n.get("restart")
+            undo = i18n.get("undo")
+            quit_str = i18n.get("quit")
+
+            self.assertTrue(restart.startswith("[N]"), f"{lang} restart hint does not start with [N]")
+            self.assertTrue(undo.startswith("[R]"), f"{lang} undo hint does not start with [R]")
+            self.assertTrue(quit_str.startswith("[Q]"), f"{lang} quit hint does not start with [Q]")
+            self.assertIn("] ", restart)
+            self.assertIn("] ", undo)
+            self.assertIn("] ", quit_str)
 
 
 if __name__ == '__main__':

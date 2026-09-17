@@ -48,10 +48,8 @@ class AI:
     def _get_branch_limit(self, depth):
         """Adaptive branching limit based on remaining search depth."""
         if depth >= 8:
-            return 5
-        if depth >= 6:
             return 4
-        if depth >= 4:
+        if depth >= 5:
             return 3
         return 2
 
@@ -82,12 +80,16 @@ class AI:
         # Iterative deepening from depth 2 to MAX_DEPTH (10)
         # Using steps 2, 4, 6, 8, 10 allows reaching 10 smoothly with PV-move ordering
         for depth in range(2, MAX_DEPTH + 1, 2):
-            if time.time() - start > AI_TIME_LIMIT * 0.88:
+            if time.time() - start > AI_TIME_LIMIT * 0.92:
                 break
             result = self._minimax_root(game, depth, candidates, start, best_move)
             if result is not None:
                 best_move = result
                 self.last_depth_reached = depth
+                # If best_move directly wins the game, no need to search deeper
+                sim = game.clone()
+                if sim.place_stone(best_move[0], best_move[1], self.player) and sim.is_game_over() and sim.winner == self.player:
+                    break
             if time.time() - start > AI_TIME_LIMIT:
                 break
 
@@ -102,6 +104,26 @@ class AI:
         best_move = None
 
         # Order candidates by quick heuristic score with PV-move placed first
+        # ─────────────────────────────────────────────────────────────
+        # 【變數說明：scored】
+        # • 語法結構與型別：List[Tuple[float, int, int]]
+        #   由三元組 (score, row, col) 所組成的列表。
+        # • 各欄位含意：
+        #   - score (float，即 tuple[0]，第一名走步為 scored[0][0])：
+        #     該候選走步的快速啟發式評估分數 (quick_score_move)。分數愈高代表該步
+        #     價值愈大或戰術急迫性愈高：
+        #       * >= SCORE["FIVE"] * 10 (10,000,000)：當前玩家直接連五獲勝或吃滿10子獲勝（最高優先級）。
+        #       * >= SCORE["FIVE"] * 5  (5,000,000)：防守對手即時連五或吃滿10子獲勝（次高優先級）。
+        #       * >= SCORE["OPEN_FOUR"] (100,000)：活四威脅走步。
+        #   - row (int，即 tuple[1]，第一名走步為 scored[0][1])：
+        #     走步在棋盤上的列座標 (0 ~ BOARD_SIZE-1)。
+        #   - col (int，即 tuple[2]，第一名走步為 scored[0][2])：
+        #     走步在棋盤上的欄座標 (0 ~ BOARD_SIZE-1)。
+        # • 排序與選取：
+        #   - scored.sort(reverse=True)：按分數由高至低遞減排序。
+        #   - scored[0]：當前排序後分數最高、最優先搜尋的最佳候選步元組。
+        #   - scored[0][0]：該最佳候選步的分數，用於強制走步判斷與安全剪枝。
+        # ─────────────────────────────────────────────────────────────
         scored = []
         for r, c in candidates:
             s = quick_score_move(game.board, r, c, self.player, game.captures)
@@ -109,7 +131,8 @@ class AI:
                 s += 1_000_000_000  # Search PV move first for optimal cut-offs
             scored.append((s, r, c))
         scored.sort(reverse=True)
-        scored = scored[:12]
+        root_limit = 8 if depth >= 6 else 12
+        scored = scored[:root_limit]
 
         for s, row, col in scored:
             if time.time() - start > AI_TIME_LIMIT:
@@ -117,6 +140,8 @@ class AI:
             sim = game.clone()
             if not sim.place_stone(row, col, self.player):
                 continue
+            if sim.is_game_over() and sim.winner == self.player:
+                return (row, col)  # Immediate winning move found!
             score = self._minimax(sim, depth - 1, alpha, beta, False, start)
             if score > best_score:
                 best_score = score
@@ -124,6 +149,7 @@ class AI:
             alpha = max(alpha, best_score)
 
         return best_move
+
 
     # ──────────────────────────────────────────────
     # Minimax with Alpha-Beta pruning
@@ -163,9 +189,15 @@ class AI:
             scored.append((s, r, c))
         scored.sort(reverse=True)
 
-        # Forcing move logic: if immediate winning or threat moves exist, narrow search
-        if scored and scored[0][0] >= SCORE["FIVE"]:
+        # Forcing move logic:
+        # 1. Immediate win for current player: prune to 1 move (instant win is proven)
+        if scored and scored[0][0] >= SCORE["FIVE"] * 10:
             scored = scored[:1]
+        # 2. Urgent defense against opponent immediate win threat:
+        #    Only evaluate moves that directly defend against the threat (up to 4)
+        elif scored and scored[0][0] >= SCORE["FIVE"] * 5:
+            scored = [m for m in scored if m[0] >= SCORE["FIVE"] * 5][:4]
+        # 3. Open four threat: narrow to top 2 moves
         elif scored and scored[0][0] >= SCORE["OPEN_FOUR"]:
             scored = scored[:2]
         else:

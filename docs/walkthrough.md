@@ -1,12 +1,12 @@
-# Gomoku Defense Guide
+# Gomoku Walkthrough
 
 <p align="right">
-  <a href="#gomoku-defense-guide-繁體中文">
+  <a href="#gomoku-專案導讀">
     <img src="https://img.shields.io/badge/中文-sienna?style=for-the-badge" />
   </a>
 </p>
 
-This document covers the core concepts, algorithm theory, heuristic design, performance optimizations, 42 Subject rule compliance details, and defense preparation for the Gomoku AI project. Use this as your reference during your 42 Defense evaluation.
+This document provides a comprehensive walkthrough of the Gomoku project, designed to help readers understand the system from the ground up: 42 Subject specifications, core architecture, algorithmic foundations, code reading order, and defense evaluation prep.
 
 ---
 
@@ -27,10 +27,12 @@ This project is implemented in **Python 3 + Pygame**.
 ~/5eyes
 ├── Gomoku                        # Launcher script
 ├── Makefile                      # Make run / test targets
-├── defense_guide.md              # Defense preparation manual
-├── BUG_REPORT.md                 # Full diagnostic and bugfix report
+├── README.md                     # Project overview and quick start
+├── docs/
+│   ├── walkthrough.md            # Comprehensive project walkthrough & architecture
+│   └── PATCH_NOTES.md            # Development history & release changelog
 ├── tests/
-│   └── test_rules_and_bugs.py   # 15 automated unit tests
+│   └── test_rules_and_bugs.py   # 20 automated unit tests
 └── src/
     ├── main.py                   # Main loop, mode selection & event dispatch
     ├── config/                   # Constants (game.py, ai.py, ui.py, bonus.py)
@@ -177,12 +179,16 @@ Run the comprehensive unit test suite:
 ```bash
 python3 -m unittest -v tests/test_rules_and_bugs.py
 ```
-**Results (15/15 tests passing)**:
+**Results (20/20 tests passing)**:
 - `test_ai_reaches_depth_10`: Verifies AI reaches Depth 10 under 0.5s.
 - `test_double_free_three_*`: Continuous, broken, obstructed, and capture exception.
 - `test_endgame_capture_*`: Counter break, counter fail, immediate win, 10th stone win.
 - `test_heuristic_*`: Open ends and capture scoring.
 - `test_power_bomb_cleans_holes`: State synchronization.
+- `test_get_move_error_diagnostics`: Illegal move diagnostic error reporting.
+- `test_quick_score_hierarchy`: Strict priority (Immediate win > Urgent defense > Line score).
+- `test_ai_blocks_open_four_*`: Tactical defense against opponent 4-in-a-row threats.
+- `test_hint_strings_integrity`: Multi-language shortcut hint string format.
 
 ---
 
@@ -193,14 +199,14 @@ python3 -m unittest -v tests/test_rules_and_bugs.py
 <br/>
 
 <p align="right">
-  <a href="#gomoku-defense-guide">
+  <a href="#gomoku-walkthrough">
     <img src="https://img.shields.io/badge/-TOP-sienna?style=for-the-badge" />
   </a>
 </p>
 
-# Gomoku Defense Guide (繁體中文)
+# Gomoku 專案導讀
 
-這份文件為 42 Gomoku AI 專案口試（Defense）的完整技術指南，涵蓋核心架構、演算法理論、啟發式函數設計、42 官方規範合規細節、特殊模式及常見問答。
+這份文件為 Gomoku 專案的完整技術導讀手冊，旨在帶領讀者由淺入深通盤理解本專案：從 42 Subject 題目規範、核心架構、演算法理論、啟發式函數設計、代碼閱讀順序，到特殊模式與評測問答。
 
 ---
 
@@ -221,10 +227,12 @@ python3 -m unittest -v tests/test_rules_and_bugs.py
 ~/5eyes
 ├── Gomoku                        # 啟動腳本
 ├── Makefile                      # 構建與測試指令
-├── defense_guide.md              # 口試問答與架構指南
-├── BUG_REPORT.md                 # 完整診斷與修復報告
+├── README.md                     # 專案簡介與快速開始
+├── docs/
+│   ├── walkthrough.md            # 專案導讀與架構走讀手冊
+│   └── PATCH_NOTES.md            # 版本演進與補丁歷程
 ├── tests/
-│   └── test_rules_and_bugs.py   # 15 項自動化單元測試
+│   └── test_rules_and_bugs.py   # 20 項自動化單元測試
 └── src/
     ├── main.py                   # 遊戲主迴圈、模式切換與事件分發
     ├── config/                   # 靜態常數 (game.py, ai.py, ui.py, bonus.py)

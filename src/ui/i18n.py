@@ -52,6 +52,14 @@ STRINGS = {
         "aide_on":        "  AIDE: ON  ",
         "aide_off":       "   AIDE: OFF   ",
         "hole_warning":   " Meteor inbound!",
+        # Warnings
+        "warn_occupied":      "Position already occupied",
+        "warn_double_three":  "Forbidden: Double Free-Three!",
+        "warn_ai_thinking":   "AI is thinking, please wait...",
+        "warn_not_your_turn": "Not your turn yet",
+        "warn_game_over":     "Game over, press [N] for new game",
+        "warn_hole_forecast": "Meteor forecast zone!",
+        "warn_meteor_crater": "Crater hole blocked!",
         "guide_title":    "Game Mode Guide",
         "guide_close":    "[Click outside or press G to close]",
         "guide_Standard": (
@@ -100,8 +108,8 @@ STRINGS = {
             "• Impact Types:\n"
             "  - 🕳️ Meteor Crater: Blasts a hole blocking stone placement.\n"
             "    (Can be repaired by placing a stone directly onto it).\n"
-            "  - 💫 Color-Flip Stone: Emits an energy pulse, inverting the\n"
-            "    colors of all adjacent opponent stones!"
+            "  - 💫 Color-Flip Stone: A volatile cosmic stone that periodically\n"
+            "    inverts its own color (Black ↔ White) every 3 turns!"
         ),
         "guide_Standard Unlimited": (
             "[Standard Unlimited Mode]\n"
@@ -117,7 +125,7 @@ STRINGS = {
             "  All special mechanics are simultaneously active:\n"
             "  1. 🪫 Decay: Stones fade and vanish after 10 turns.\n"
             "  2. 🪄 Power Stones: Capture 5 stones to unlock Bomb, Cross & Diag!\n"
-            "  3. 🌠 Shooting Star: Meteors create craters & color flips!\n"
+            "  3. 🌠 Shooting Star: Meteors create craters & color-flipping stones!\n"
             "• Tactical Tip:\n"
             "  - Balance rapid attacks, power stones, and vanishing chains to win!"
         ),
@@ -161,6 +169,14 @@ STRINGS = {
         "aide_on":        "  AIDE: ON  ",
         "aide_off":       "   AIDE: OFF   ",
         "hole_warning":   " Meteore en approche!",
+        # Warnings
+        "warn_occupied":      "Case déjà occupée",
+        "warn_double_three":  "Interdit : Double-trois libre !",
+        "warn_ai_thinking":   "L'IA réfléchit, veuillez patienter...",
+        "warn_not_your_turn": "Ce n'est pas votre tour",
+        "warn_game_over":     "Partie terminée, appuyez sur [N]",
+        "warn_hole_forecast": "Zone d'impact de météore !",
+        "warn_meteor_crater": "Cratère de météore bloqué !",
         "guide_title":    "Guide des Modes",
         "guide_close":    "[Cliquer à l'extérieur ou appuyer sur G pour fermer]",
         "guide_Standard": (
@@ -209,8 +225,8 @@ STRINGS = {
             "• Types d'Impacts :\n"
             "  - 🕳️ Cratère de Météore : Crée un trou infranchissable.\n"
             "    (Peut être réparé en y posant une pierre directement).\n"
-            "  - 💫 Pierre d'Inversion : Émet une onde qui inverse\n"
-            "    la couleur des pierres ennemies adjacentes !"
+            "  - 💫 Pierre d'Inversion : Une pierre cosmique instable qui inverse\n"
+            "    sa propre couleur (Noir ↔ Blanc) tous les 3 tours !"
         ),
         "guide_Standard Unlimited": (
             "[Mode Standard Sans Limite]\n"
@@ -226,7 +242,7 @@ STRINGS = {
             "  Toutes les mécaniques spéciales sont actives en même temps :\n"
             "  1. 🪫 Décadence : Les pierres s'effacent après 10 tours.\n"
             "  2. 🪄 Pierres de Pouvoir : 5 captures débloquent Bombe, Croix & Diag !\n"
-            "  3. 🌠 Étoile Filante : Cratères de météores et inversions de couleur !\n"
+            "  3. 🌠 Étoile Filante : Cratères de météores et pierres qui changent de couleur !\n"
             "• Conseil Tactique :\n"
             "  - Jonglez entre attaques vives, pouvoirs et pierres éphémères pour vaincre !"
         ),
@@ -270,6 +286,14 @@ STRINGS = {
         "aide_on":        "  輔助: 開啟  ",
         "aide_off":       "   輔助: 關閉   ",
         "hole_warning":   " 流星接近中!",
+        # Warnings
+        "warn_occupied":      "此處已有棋子！",
+        "warn_double_three":  "禁手：雙活三限制！",
+        "warn_ai_thinking":   "AI 思考中，請稍候...",
+        "warn_not_your_turn": "尚未輪到您的回合！",
+        "warn_game_over":     "對局已結束，請按 [N] 新局",
+        "warn_hole_forecast": "流星撞擊預測區！",
+        "warn_meteor_crater": "隕石坑洞無法直接落子！",
         "guide_title":    "遊戲模式指南",
         "guide_close":    "（點擊任意處或按 G 鍵關閉）",
         "guide_Standard": (
@@ -315,8 +339,8 @@ STRINGS = {
             "• 天體隨機事件：\n"
             "  - 每隔數個回合，天外流星將隨機劃破天際撞擊棋盤！\n"
             "• 撞擊產物類型：\n"
-            "  - 🕳️ 隕石坑洞：在落點形成無法直接通行的凹坑（可透過主動落子填補修復）。\n"
-            "  - 💫 變色異石：釋放宇宙能量脈衝，將周圍相鄰敵方棋子的顏色逆轉為己方！"
+            "  - 🕳️ 隕石坑：在落點形成無法直接通行的凹坑（可透過主動落子填補修復）。\n"
+            "  - 💫 變色石：不穩定的星石，每隔 3 回合會變換黑白顏色！"
         ),
         "guide_Standard Unlimited": (
             "[標準無限制模式]\n"
@@ -332,7 +356,7 @@ STRINGS = {
             "  三大特殊機制在棋盤上同時全面啟用：\n"
             "  1. 🪫 風化機制：每顆落下的棋子在 10 回合後會自動消散。\n"
             "  2. 🪄 超能石機制：吃滿 5 顆子可解鎖使用炸彈 (*)、十字 (+) 與斜向 (X) 毀滅技能！\n"
-            "  3. 🌠 流星機制：宇宙天體隨機墜落，砸出隕石坑洞或引爆顏色反轉脈衝！\n"
+            "  3. 🌠 流星機制：宇宙天體隨機墜落，砸出隕石坑或落下變色石！\n"
             "• 戰術提示：\n"
             "  - 在瞬息萬變的棋盤上，必須同時兼顧快速進攻、技能釋放與消失時間才能存活獲勝！"
         ),

@@ -46,10 +46,14 @@ class GUI:
     """
 
     def __init__(self, win_w=WINDOW_WIDTH, win_h=WINDOW_HEIGHT):
-        pygame.init()
+        if not pygame.get_init():
+            pygame.init()
         self.win_w = win_w
         self.win_h = win_h
-        self.screen = pygame.display.set_mode((self.win_w, self.win_h), pygame.RESIZABLE)
+        if pygame.display.get_surface() is None:
+            self.screen = pygame.display.set_mode((self.win_w, self.win_h), pygame.RESIZABLE)
+        else:
+            self.screen = pygame.display.get_surface()
         pygame.display.set_caption("Gomoku — 5eyes")
         self._load_fonts()
         self._panel_x   = PANEL_X_DEFAULT
@@ -57,6 +61,8 @@ class GUI:
         self.status_msg = ""
         self.aide_msg = ""
         self.aide_timer = 0
+        self.warning_msg = ""
+        self.warning_timer = 0
 
         # Clickable rects — pre-populated with empty defaults so first-frame clicks are safe
         self._lang_rects = {lang: pygame.Rect(0, 0, 0, 0) for lang in i18n.LANGS}
@@ -234,6 +240,10 @@ class GUI:
         if self.aide_msg and pygame.time.get_ticks() < self.aide_timer:
             self._draw_aide_on_board()
 
+        # Warning toast on board
+        if self.warning_msg and pygame.time.get_ticks() < self.warning_timer:
+            self._draw_warning_on_board()
+
         # Guide popup
         if self.guide_open and self.guide_msg:
             self._draw_guide_overlay()
@@ -399,6 +409,11 @@ class GUI:
         self.aide_msg = msg
         self.aide_timer = pygame.time.get_ticks() + duration_ms
 
+    def show_warning(self, msg, duration_ms=2500):
+        """Display an invalid move warning both on board and in panel."""
+        self.warning_msg = msg
+        self.warning_timer = pygame.time.get_ticks() + duration_ms
+
     def show_guide(self, msg):
         """Display a guide message. Closes when clicking outside the box."""
         self.guide_msg = msg
@@ -436,6 +451,23 @@ class GUI:
         pygame.draw.rect(self.screen, bg_col, rect, border_radius=6)
 
         txt = self.font_small.render(self.aide_msg, True, txt_col)
+        self.screen.blit(txt, txt.get_rect(center=rect.center))
+
+    def _draw_warning_on_board(self):
+        """Render a warning toast at the board's bottom-right corner."""
+        px = self._panel_x
+        txt_str = "⚠️ " + self.warning_msg
+        txt = self.font_small.render(txt_str, True, (255, 240, 225))
+
+        bw = txt.get_width() + 22
+        bh = txt.get_height() + 14
+        bx = max(10, px - bw - 18)
+        offset_y = 45 if (self.aide_msg and pygame.time.get_ticks() < self.aide_timer) else 0
+        by = self.win_h - bh - 18 - offset_y
+        rect = pygame.Rect(bx, by, bw, bh)
+
+        pygame.draw.rect(self.screen, (155, 25, 25), rect, border_radius=6)
+        pygame.draw.rect(self.screen, (255, 90, 90), rect, 2, border_radius=6)
         self.screen.blit(txt, txt.get_rect(center=rect.center))
 
     def _draw_guide_overlay(self):
@@ -603,7 +635,17 @@ class GUI:
         tc = (255, 80, 80) if ai_time > 0.4 else COLOR_TEXT
         label(f"  {ai_time:.3f}s", tc, self.font_title)
 
-        if self.status_msg:
+        if self.warning_msg and pygame.time.get_ticks() < self.warning_timer:
+            label(SEP, (240, 80, 80))
+            warn_surf = self.font_small.render("⚠️ " + self.warning_msg, True, (255, 235, 220))
+            bw = pw - 16
+            bh = warn_surf.get_height() + 10
+            warn_rect = pygame.Rect(px + 8, y, bw, bh)
+            pygame.draw.rect(self.screen, (140, 25, 25), warn_rect, border_radius=6)
+            pygame.draw.rect(self.screen, (240, 80, 80), warn_rect, 1, border_radius=6)
+            self.screen.blit(warn_surf, warn_surf.get_rect(center=warn_rect.center))
+            y += bh + 8
+        elif self.status_msg:
             label(SEP, COLOR_ACCENT)
             label(self.status_msg, font=self.font_small)
 
@@ -663,26 +705,65 @@ class GUI:
             mt = pygame.transform.smoothscale(mt, (m_w, mt.get_height() * m_w // mt.get_width()))
         self.screen.blit(mt, mt.get_rect(center=self._menu_rect.center))
 
-        # ---- Responsive hints row: N, R, Q ----
-        hint_y = self.win_h - 25
+        # ---- Responsive hints: N (New Game), R (Undo), Q (Quit) ----
         hints = [t("restart"), t("undo"), t("quit")]
+        h_surfs = [self._render_hint_item(txt) for txt in hints]
+        s0, s1, s2 = h_surfs[0], h_surfs[1], h_surfs[2]
 
-        h_surfs = [self.font_small.render(txt, True, COLOR_TEXT) for txt in hints]
-        total_w = sum(s.get_width() for s in h_surfs)
         available_w = pw - 2 * panel_pad
+        total_w = s0.get_width() + s1.get_width() + s2.get_width()
 
-        if total_w + 20 > available_w:
-            # Wrap to multiple lines if they don't fit
-            curr_y = self.win_h - 45
-            for s in h_surfs:
-                r = s.get_rect(center=(px + pw // 2, curr_y))
-                self.screen.blit(s, r)
-                curr_y += s.get_height() + 2
+        # Subtle divider above hints area
+        pygame.draw.line(self.screen, (60, 45, 28), (px + panel_pad, self.win_h - 52), (px + pw - panel_pad, self.win_h - 52))
+
+        if total_w + 16 <= available_w:
+            # Single horizontal row: Left (New Game), Center (Undo), Right (Quit)
+            hint_y = self.win_h - 24
+            self.screen.blit(s0, s0.get_rect(midleft=(px + panel_pad, hint_y)))
+            self.screen.blit(s1, s1.get_rect(center=(px + pw // 2, hint_y)))
+            self.screen.blit(s2, s2.get_rect(midright=(px + pw - panel_pad, hint_y)))
         else:
-            # Left, Center, Right aligned
-            self.screen.blit(h_surfs[0], h_surfs[0].get_rect(midleft=(px + panel_pad, hint_y)))
-            self.screen.blit(h_surfs[1], h_surfs[1].get_rect(center=(px + pw // 2, hint_y)))
-            self.screen.blit(h_surfs[2], h_surfs[2].get_rect(midright=(px + pw - panel_pad, hint_y)))
+            # Clean two-row layout:
+            # Row 1: [N] New Game (centered)
+            # Row 2: [R] Undo (left)  and  [Q] Quit (right)
+            y1 = self.win_h - 37
+            y2 = self.win_h - 17
+
+            # Overflow protection for Row 1
+            if s0.get_width() > available_w:
+                w0 = available_w
+                s0 = pygame.transform.smoothscale(s0, (w0, max(1, s0.get_height() * w0 // s0.get_width())))
+            self.screen.blit(s0, s0.get_rect(center=(px + pw // 2, y1)))
+
+            # Overflow protection for Row 2
+            r2_total = s1.get_width() + s2.get_width() + 8
+            if r2_total > available_w:
+                scale_ratio = available_w / r2_total
+                w1 = max(1, int(s1.get_width() * scale_ratio))
+                w2 = max(1, int(s2.get_width() * scale_ratio))
+                s1 = pygame.transform.smoothscale(s1, (w1, max(1, s1.get_height() * w1 // s1.get_width())))
+                s2 = pygame.transform.smoothscale(s2, (w2, max(1, s2.get_height() * w2 // s2.get_width())))
+
+            self.screen.blit(s1, s1.get_rect(midleft=(px + panel_pad, y2)))
+            self.screen.blit(s2, s2.get_rect(midright=(px + pw - panel_pad, y2)))
+
+    def _render_hint_item(self, text):
+        """
+        Render a keyboard shortcut hint item.
+        The hotkey bracket part (e.g. '[N]') is highlighted in COLOR_ACCENT (gold),
+        while the action description is rendered in COLOR_TEXT (cream).
+        """
+        if text.startswith("[") and "] " in text:
+            k_part, d_part = text.split("] ", 1)
+            k_surf = self.font_small.render(k_part + "]", True, COLOR_ACCENT)
+            d_surf = self.font_small.render(" " + d_part, True, COLOR_TEXT)
+            sw = k_surf.get_width() + d_surf.get_width()
+            sh = max(k_surf.get_height(), d_surf.get_height())
+            surf = pygame.Surface((sw, sh), pygame.SRCALPHA)
+            surf.blit(k_surf, (0, (sh - k_surf.get_height()) // 2))
+            surf.blit(d_surf, (k_surf.get_width(), (sh - d_surf.get_height()) // 2))
+            return surf
+        return self.font_small.render(text, True, COLOR_TEXT)
 
     def _draw_lang_buttons(self, px, pw):
         """
