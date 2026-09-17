@@ -705,47 +705,34 @@ class GUI:
             mt = pygame.transform.smoothscale(mt, (m_w, mt.get_height() * m_w // mt.get_width()))
         self.screen.blit(mt, mt.get_rect(center=self._menu_rect.center))
 
-        # ---- Responsive hints: N (New Game), R (Undo), Q (Quit) ----
-        hints = [t("restart"), t("undo"), t("quit")]
+        # ---- Responsive hints: N (New Game), R (Undo) ----
+        hints = [t("restart"), t("undo")]
         h_surfs = [self._render_hint_item(txt) for txt in hints]
-        s0, s1, s2 = h_surfs[0], h_surfs[1], h_surfs[2]
+        s0, s1 = h_surfs[0], h_surfs[1]
 
         available_w = pw - 2 * panel_pad
-        total_w = s0.get_width() + s1.get_width() + s2.get_width()
+        total_w = s0.get_width() + s1.get_width()
 
         # Subtle divider above hints area
-        pygame.draw.line(self.screen, (60, 45, 28), (px + panel_pad, self.win_h - 52), (px + pw - panel_pad, self.win_h - 52))
+        pygame.draw.line(self.screen, (60, 45, 28), (px + panel_pad, self.win_h - 45), (px + pw - panel_pad, self.win_h - 45))
 
-        if total_w + 16 <= available_w:
-            # Single horizontal row: Left (New Game), Center (Undo), Right (Quit)
-            hint_y = self.win_h - 24
+        hint_y = self.win_h - 22
+        if total_w + 10 <= available_w:
+            # Single horizontal row: Left ([N] New Game), Right ([R] Undo)
             self.screen.blit(s0, s0.get_rect(midleft=(px + panel_pad, hint_y)))
-            self.screen.blit(s1, s1.get_rect(center=(px + pw // 2, hint_y)))
-            self.screen.blit(s2, s2.get_rect(midright=(px + pw - panel_pad, hint_y)))
+            self.screen.blit(s1, s1.get_rect(midright=(px + pw - panel_pad, hint_y)))
         else:
-            # Clean two-row layout:
-            # Row 1: [N] New Game (centered)
-            # Row 2: [R] Undo (left)  and  [Q] Quit (right)
-            y1 = self.win_h - 37
-            y2 = self.win_h - 17
-
-            # Overflow protection for Row 1
+            # Fallback scaling / stacking if window width is extremely narrow
+            y1 = self.win_h - 32
+            y2 = self.win_h - 14
             if s0.get_width() > available_w:
                 w0 = available_w
                 s0 = pygame.transform.smoothscale(s0, (w0, max(1, s0.get_height() * w0 // s0.get_width())))
-            self.screen.blit(s0, s0.get_rect(center=(px + pw // 2, y1)))
-
-            # Overflow protection for Row 2
-            r2_total = s1.get_width() + s2.get_width() + 8
-            if r2_total > available_w:
-                scale_ratio = available_w / r2_total
-                w1 = max(1, int(s1.get_width() * scale_ratio))
-                w2 = max(1, int(s2.get_width() * scale_ratio))
+            if s1.get_width() > available_w:
+                w1 = available_w
                 s1 = pygame.transform.smoothscale(s1, (w1, max(1, s1.get_height() * w1 // s1.get_width())))
-                s2 = pygame.transform.smoothscale(s2, (w2, max(1, s2.get_height() * w2 // s2.get_width())))
-
-            self.screen.blit(s1, s1.get_rect(midleft=(px + panel_pad, y2)))
-            self.screen.blit(s2, s2.get_rect(midright=(px + pw - panel_pad, y2)))
+            self.screen.blit(s0, s0.get_rect(center=(px + pw // 2, y1)))
+            self.screen.blit(s1, s1.get_rect(center=(px + pw // 2, y2)))
 
     def _render_hint_item(self, text):
         """

@@ -90,7 +90,7 @@ Root (Depth 10) ──> PV Move Searched First ──> Top 12 Candidates
 
 1. **Adaptive Forward Pruning**:
    - Instead of searching all candidates in deep plies, we dynamically prune candidates down to the top 2–5 most promising moves based on quick heuristic scores.
-   - Forcing moves (threats $\ge \text{SCORE}["OPEN\_FOUR"]$ or wins $\ge \text{SCORE}["FIVE"]$) collapse the search to only the 1–2 mandatory responses.
+   - Forcing moves (threats $\ge$ `SCORE["OPEN_FOUR"]` or wins $\ge$ `SCORE["FIVE"]`) collapse the search to only the 1–2 mandatory responses.
    - Reduces visited nodes from 300,000+ down to ~1,500–3,000 nodes.
 2. **PV-Move (Principal Variation) Priority**:
    - In Iterative Deepening (depths 2, 4, 6, 8, 10), the best move identified in the previous iteration is placed at the very front of the next search (`score += 1_000_000_000`).
@@ -287,7 +287,7 @@ python3 -m unittest -v tests/test_rules_and_bugs.py
 
 1. **自我調整前向剪枝 (Adaptive Forward Pruning)**：
    - 深層搜尋時依啟發分數將候選走法收斂至前 2～5 個，避免分支係數爆炸。
-   - 若偵測到立即致勝手（$\ge \text{SCORE}["FIVE"]$）或重大威脅（$\ge \text{SCORE}["OPEN\_FOUR"]$），僅搜尋該 1～2 個強制應手。
+   - 若偵測到立即致勝手（$\ge$ `SCORE["FIVE"]`）或重大威脅（$\ge$ `SCORE["OPEN_FOUR"]`），僅搜尋該 1～2 個強制應手。
    - 將博弈樹節點總數自 30 萬+ 壓制在 **1,500～3,000 個**。
 2. **PV-Move (主要變例) 優先排序**：
    - 迭代加深在邁入下一輪深度時，將上一輪評估出的最優走法（PV Move）賦予超高分數置於首位，產生極致的 Alpha-Beta 剪枝效應。

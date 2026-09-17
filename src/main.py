@@ -69,10 +69,6 @@ def run_game(mode_name=MODE_STANDARD, vs_mode=MODE_AI, gui=None):
                 gui.handle_resize(event.w, event.h)
 
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_q:
-                    pygame.quit()
-                    sys.exit()
-
                 if event.key == pygame.K_ESCAPE:
                     if gui.guide_open:
                         gui.close_guide()

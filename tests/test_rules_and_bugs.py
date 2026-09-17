@@ -453,13 +453,16 @@ class TestGomokuRulesAndFixes(unittest.TestCase):
             i18n.set_lang(lang)
             restart = i18n.get("restart")
             undo = i18n.get("undo")
+            menu = i18n.get("menu")
             quit_str = i18n.get("quit")
 
             self.assertTrue(restart.startswith("[N]"), f"{lang} restart hint does not start with [N]")
             self.assertTrue(undo.startswith("[R]"), f"{lang} undo hint does not start with [R]")
+            self.assertTrue(menu.startswith("[ESC]"), f"{lang} menu hint does not start with [ESC]")
             self.assertTrue(quit_str.startswith("[Q]"), f"{lang} quit hint does not start with [Q]")
             self.assertIn("] ", restart)
             self.assertIn("] ", undo)
+            self.assertIn("] ", menu)
             self.assertIn("] ", quit_str)
 
 
