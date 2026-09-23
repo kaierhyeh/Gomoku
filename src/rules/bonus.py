@@ -1,6 +1,6 @@
 from dataclasses import dataclass
-from config.game import (MODE_STANDARD, MODE_DECAY, MODE_POWER, MODE_STAR, 
-                       MODE_LIMITLESS, MODE_EVERYTHING)
+from config.game import (MODE_STANDARD, MODE_DECAY, MODE_POWER, MODE_STAR,
+                         MODE_LIMITLESS, MODE_EVERYTHING)
 
 @dataclass
 class RuleSet:

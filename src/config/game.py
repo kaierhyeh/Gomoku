@@ -4,6 +4,7 @@ EMPTY = 0
 BLACK = 1                # Human player (default) or AI
 WHITE = 2                # AI (default) or second human
 HOLE = 3                 # Star mode hole
+DIRECTIONS = ((0, 1), (1, 0), (1, 1), (1, -1)) # →, ↓, ↘, ↙
 
 # Win conditions
 WIN_LENGTH = 5           # Five or more in a row to win

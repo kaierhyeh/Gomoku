@@ -1,11 +1,5 @@
-from config.game import BOARD_SIZE, EMPTY, BLACK, WHITE
+from config.game import BOARD_SIZE, EMPTY, BLACK, WHITE, DIRECTIONS
 from config.ai import SCORE
-
-
-# ──────────────────────────────────────────────
-# Direction vectors for scanning (horizontal, vertical, diagonals)
-# ──────────────────────────────────────────────
-DIRECTIONS = [(0, 1), (1, 0), (1, 1), (1, -1)]
 
 
 def evaluate_board(board, captures, player):
