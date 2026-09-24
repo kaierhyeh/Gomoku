@@ -1,19 +1,18 @@
 import pygame
 import pygame.gfxdraw
-import sys
 import os
 import math
 from ui import i18n
 from config.game import (BOARD_SIZE, EMPTY, BLACK, WHITE, HOLE)
-from config.ui import (CELL_SIZE, BOARD_MARGIN, WINDOW_WIDTH, WINDOW_HEIGHT, COLOR_BG, COLOR_LINE, COLOR_BLACK_STONE, COLOR_WHITE_STONE, COLOR_PANEL_BG, COLOR_TEXT, COLOR_ACCENT)
-from config.bonus import (POWER_BOMB, POWER_CROSS, POWER_DIAGONAL, STAR_WARN_PLY)
+from config.ui import (CELL_SIZE, BOARD_MARGIN, WINDOW_WIDTH, WINDOW_HEIGHT, COLOR_BG, COLOR_LINE, COLOR_PANEL_BG, COLOR_TEXT, COLOR_ACCENT)
+from config.bonus import (POWER_BOMB, POWER_CROSS, POWER_DIAGONAL)
 
 PANEL_X_DEFAULT = BOARD_MARGIN + CELL_SIZE * (BOARD_SIZE - 1) + BOARD_MARGIN
+
 
 # ──────────────────────────────────────────────
 # CJK-capable font loader
 # ──────────────────────────────────────────────
-
 def _load_font(size, bold=False):
     """
     Load a font that supports CJK characters (needed for Traditional Chinese).
@@ -129,13 +128,9 @@ class GUI:
         if is_black:
             base   = (28, 28, 38)
             rim    = (10, 10, 18)
-            hl_col = (255, 255, 255, 100)
-            glint  = (255, 255, 255, 190)
         else:
             base   = (240, 242, 245)
             rim    = (200, 200, 200)
-            hl_col = (255, 255, 255, 180) # Stronger white glow
-            glint  = (255, 255, 255, 255)
 
         # Drop shadow — MUST be strictly inside the stone's footprint.
         # With offset (ox, oy), shad_r <= radius - max(ox, oy) guarantees full coverage.
@@ -265,7 +260,7 @@ class GUI:
 
     def _draw_star_points(self, cell, margin):
         r = max(3, cell // 8)
-        for row, col in [(3,3),(3,9),(3,15),(9,3),(9,9),(9,15),(15,3),(15,9),(15,15)]:
+        for row, col in [(3, 3), (3, 9), (3, 15), (9, 3), (9, 9), (9, 15), (15, 3), (15, 9), (15, 15)]:
             x = margin + col * cell
             y = margin + row * cell
             pygame.gfxdraw.filled_circle(self.screen, x, y, r, COLOR_LINE)
@@ -285,13 +280,11 @@ class GUI:
                 age_label = None
                 cracked = False
                 blip_indicator = False
-                blip_highlight = False
                 hints = hints_cache.get((r, c), {})
                 if "cracked" in hints: cracked = True
                 if "age_label" in hints: age_label = hints["age_label"]
                 if "blip" in hints:
                     blip_indicator = True
-                    blip_highlight = True
 
                 self._draw_stone(self.screen, x, y, stone_r, board[r][c] == BLACK,
                                  age_label=age_label, cracked=cracked)
@@ -355,7 +348,6 @@ class GUI:
         # Center target
         pygame.gfxdraw.aacircle(self.screen, x, y, stone_r + 2, (100, 255, 100))
 
-        opponent = WHITE if game.current_player == BLACK else BLACK
         targets = []
 
         if power_type == POWER_BOMB:
@@ -431,7 +423,7 @@ class GUI:
         # Colors based on message
         if "UNO" in self.aide_msg:
             bg_col = (140, 20, 20)  # Deep Red
-            txt_col = (255, 230, 180) # Pale Gold / Cream
+            txt_col = (255, 230, 180)  # Pale Gold / Cream
         elif "Threat" in self.aide_msg or "威脅" in self.aide_msg:
             bg_col = (255, 220, 80)  # Bright Yellow-Orange
             txt_col = (120, 60, 0)   # Darker Orange text

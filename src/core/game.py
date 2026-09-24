@@ -1,9 +1,10 @@
 import random
-from config.game import (BOARD_SIZE, EMPTY, BLACK, WHITE, HOLE, DIRECTIONS, MAX_CAPTURES)
-from config.bonus import (DECAY_LIFESPAN, POWER_BOMB, POWER_CROSS, POWER_DIAGONAL, STAR_MIN_PLY, STAR_MAX_PLY, STAR_WARN_PLY)
+from config.game import (BOARD_SIZE, EMPTY, BLACK, WHITE, DIRECTIONS, MAX_CAPTURES)
+from config.bonus import (STAR_MIN_PLY, STAR_MAX_PLY)
 from rules.bonus import get_rules_for_mode
 from rules.rules import (in_bounds, has_five, has_any_five,
                          get_five_cells_through, would_capture, is_double_free_three)
+
 
 class Game:
     def __init__(self, rules=None, state=None, modifiers=None):
@@ -36,7 +37,7 @@ class Game:
     @individual_captures.setter
     def individual_captures(self, value): self.state.individual_captures = value
     @property
-    def ply_count(self): return self.state.ply_count # ply: 一層搜尋 ≒ 深度
+    def ply_count(self): return self.state.ply_count  # ply: 一層搜尋 ≒ 深度
     @ply_count.setter
     def ply_count(self, value): self.state.ply_count = value
     @property
@@ -250,7 +251,7 @@ class Game:
             for r in range(BOARD_SIZE):
                 for c in range(BOARD_SIZE):
                     if self.board[r][c] == player:
-                        for dr, dc in [(-1,0),(1,0),(0,-1),(0,1),(-1,-1),(-1,1),(1,-1),(1,1)]:
+                        for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)]:
                             nr, nc = r + dr, c + dc
                             if (0 <= nr < BOARD_SIZE and 0 <= nc < BOARD_SIZE and self.board[nr][nc] == EMPTY
                                     and (nr, nc) not in self.holes and (nr, nc) not in self.hole_forecast):
@@ -349,6 +350,6 @@ class Game:
             winner=self.state.winner,
             pending_win=self.state.pending_win,
             last_move=self.state.last_move,
-            history=[] # don't clone history for AI sim
+            history=[]  # don't clone history for AI sim
         )
         return Game(self.rules, new_state)

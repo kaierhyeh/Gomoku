@@ -134,7 +134,7 @@ class AI:
         root_limit = 8 if depth >= 6 else 12
         scored = scored[:root_limit]
 
-        for s, row, col in scored:
+        for _, row, col in scored:
             if time.time() - start > AI_TIME_LIMIT:
                 break
             sim = game.clone()
@@ -154,7 +154,6 @@ class AI:
     # ──────────────────────────────────────────────
     # Minimax with Alpha-Beta pruning
     # ──────────────────────────────────────────────
-
     def _minimax(self, game, depth, alpha, beta, is_maximizing, start):
         """
         Recursive Minimax search with Alpha-Beta pruning, transposition table,
@@ -206,7 +205,7 @@ class AI:
 
         if is_maximizing:
             best = float('-inf')
-            for s, row, col in scored:
+            for _, row, col in scored:
                 if time.time() - start > AI_TIME_LIMIT:
                     break
                 sim = game.clone()
@@ -219,7 +218,7 @@ class AI:
                     break   # Beta cut-off (prune)
         else:
             best = float('inf')
-            for s, row, col in scored:
+            for _, row, col in scored:
                 if time.time() - start > AI_TIME_LIMIT:
                     break
                 sim = game.clone()

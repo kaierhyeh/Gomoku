@@ -102,11 +102,9 @@ def quick_score_move(board, row, col, player, captures):
     opponent = WHITE if player == BLACK else BLACK
     score = 0
 
-    # Offensive capture bonus
     # 1. Offensive capture bonus (Immediate win if reaching 5 pairs)
     my_caps = _count_captures_for_scoring(board, row, col, player)
     if captures.get(player, 0) + my_caps >= 5:
-        return SCORE["FIVE"]  # Immediate win by 10 captures!
         return SCORE["FIVE"] * 10  # Immediate win by 10 captures!
     score += my_caps * 25000
 

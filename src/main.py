@@ -1,7 +1,6 @@
 import os
 os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 import pygame
-import pygame.gfxdraw
 import sys
 import threading
 import math
@@ -18,15 +17,15 @@ from rules.bonus import get_rules_for_mode
 MODE_AI    = "ai"
 MODE_HUMAN = "human"
 
+
 # ──────────────────────────────────────────────
 # Main game loop
 # ──────────────────────────────────────────────
-
 def run_game(mode_name=MODE_STANDARD, vs_mode=MODE_AI, gui=None):
     """
     Main game loop.
     vs_mode: 'ai'    → Human (Black) vs AI (White)
-             'human' → Human vs Human with AI move suggestion for Black
+             'human' → Human vs Human
     gui:  pass an existing GUI to reuse window.
     """
     rules = get_rules_for_mode(mode_name)
@@ -97,8 +96,8 @@ def run_game(mode_name=MODE_STANDARD, vs_mode=MODE_AI, gui=None):
                     if game.history and not ai_thinking:
                         success = False
                         if vs_mode == MODE_AI and len(game.history) >= 2 and game.current_player == BLACK:
-                            game.undo() # Pop AI move
-                            game.undo() # Pop Human move
+                            game.undo()  # Pop AI move
+                            game.undo()  # Pop Human move
                             success = True
                         elif vs_mode == MODE_HUMAN and len(game.history) >= 1:
                             game.undo()
@@ -271,7 +270,6 @@ def run_game(mode_name=MODE_STANDARD, vs_mode=MODE_AI, gui=None):
                     name = i18n.get("black") if game.winner == BLACK else i18n.get("white")
                     gui.set_status(f'{name} {i18n.get("wins")}')
                 else:
-                    gui.set_status(f'AI ({row},{col}) {ai_time:.3f}s')
                     gui.set_status(f'AI ({row},{col}) {ai_time:.3f}s (d={ai.last_depth_reached})')
             else:
                 ai_thinking = False
@@ -287,7 +285,7 @@ def run_game(mode_name=MODE_STANDARD, vs_mode=MODE_AI, gui=None):
                 if opp_score >= 10000:
                     gui.show_aide_popup("UNO!", 3000)
                 elif opp_score >= 5000:
-                     gui.show_aide_popup("Threat", 3000)
+                    gui.show_aide_popup("Threat", 3000)
 
         # ── Render (single flip inside gui.draw) ─────────
         curr_p_type = power_types[power_idx] if power_active else None
@@ -302,6 +300,7 @@ def run_game(mode_name=MODE_STANDARD, vs_mode=MODE_AI, gui=None):
 
 # Record the last vs index to remember player preference
 GLOBAL_VS_IDX = 0
+
 
 def select_mode(gui=None):
     """
@@ -342,7 +341,6 @@ def select_mode(gui=None):
         btns = []
         for i in range(2):
             for j in range(3):
-                idx = i * 3 + j
                 rect = pygame.Rect(start_x + j * (btn_w + gap_x), start_y + i * (btn_h + gap_y), btn_w, btn_h)
                 btns.append(rect)
 
@@ -388,9 +386,9 @@ def select_mode(gui=None):
                 except Exception:
                     pass
 
-        return f_title, f_icon, f_btn, f_small, btns, s_rect, lang_btns, mode_icons
+        return f_title, f_btn, f_small, btns, s_rect, lang_btns, mode_icons
 
-    f_title, f_icon, f_btn, f_small, buttons, s_rect, lang_btns, mode_icons = get_layout(screen)
+    f_title, f_btn, f_small, buttons, s_rect, lang_btns, mode_icons = get_layout(screen)
     clock = pygame.time.Clock()
 
     while True:
@@ -418,7 +416,7 @@ def select_mode(gui=None):
         screen.blit(rtxt, rtxt.get_rect(center=(s_rect.x + 3*s_rect.width//4, s_rect.centery)))
 
         # Mode buttons (3x2 grid)
-        for i, (m_id, icon_txt) in enumerate(mode_options):
+        for i, (m_id, _) in enumerate(mode_options):
             rect = buttons[i]
             hovered = rect.collidepoint(mx, my)
             bg = (70, 50, 30) if hovered else (50, 35, 20)
@@ -440,15 +438,15 @@ def select_mode(gui=None):
                     # 🪫 Battery Icon
                     pygame.draw.rect(screen, (100, 100, 100), (ix-12, iy-6, 24, 12), 2, border_radius=2)
                     pygame.draw.rect(screen, (100, 100, 100), (ix+12, iy-3, 3, 6))
-                    pygame.draw.rect(screen, (200, 50, 50), (ix-10, iy-4, 5, 8)) # Low charge red
+                    pygame.draw.rect(screen, (200, 50, 50), (ix-10, iy-4, 5, 8))  # Low charge red
                 elif m_id == MODE_POWER:
                     # 🪄 Magic Wand
-                    pygame.draw.line(screen, (100, 70, 50), (ix-10, iy+10), (ix+5, iy-5), 4) # handle
-                    pygame.draw.circle(screen, (255, 255, 255), (ix+8, iy-8), 4) # tip
-                    pygame.draw.circle(screen, (255, 255, 0), (ix+8, iy-8), 6, 1) # glow
+                    pygame.draw.line(screen, (100, 70, 50), (ix-10, iy+10), (ix+5, iy-5), 4)  # handle
+                    pygame.draw.circle(screen, (255, 255, 255), (ix+8, iy-8), 4)  # tip
+                    pygame.draw.circle(screen, (255, 255, 0), (ix+8, iy-8), 6, 1)  # glow
                 elif m_id == MODE_STAR:
                     # 🌠 Shooting Star
-                    pygame.draw.polygon(screen, (255, 150, 50), [(ix-5,iy+5), (ix-25,iy+20), (ix-10,iy+30), (ix,iy+10)])
+                    pygame.draw.polygon(screen, (255, 150, 50), [(ix-5, iy+5), (ix-25, iy+20), (ix-10, iy+30), (ix, iy+10)])
                     pts = []
                     for j in range(10):
                         rr = 12 if j % 2 == 0 else 5
@@ -480,16 +478,16 @@ def select_mode(gui=None):
             # Manually Draw Flag before Text to guarantee visibility
             fx, fy = rect.x + 8, rect.centery - 8
             if lang == "EN":  # US Flag
-                pygame.draw.rect(screen, (200, 50, 50), (fx, fy, 22, 16)) # base red
-                pygame.draw.rect(screen, (255, 255, 255), (fx, fy+2, 22, 3)) # stripes
+                pygame.draw.rect(screen, (200, 50, 50), (fx, fy, 22, 16))  # base red
+                pygame.draw.rect(screen, (255, 255, 255), (fx, fy+2, 22, 3))  # stripes
                 pygame.draw.rect(screen, (255, 255, 255), (fx, fy+7, 22, 3))
                 pygame.draw.rect(screen, (255, 255, 255), (fx, fy+12, 22, 3))
-                pygame.draw.rect(screen, (50, 50, 150), (fx, fy, 11, 8)) # blue canton
-            elif lang == "FR": # France Flag
+                pygame.draw.rect(screen, (50, 50, 150), (fx, fy, 11, 8))  # blue canton
+            elif lang == "FR":  # France Flag
                 pygame.draw.rect(screen, (40, 80, 180), (fx, fy, 7, 16))
                 pygame.draw.rect(screen, (255, 255, 255), (fx+7, fy, 8, 16))
                 pygame.draw.rect(screen, (220, 40, 50), (fx+15, fy, 7, 16))
-            elif lang == "ZH": # Taiwan Flag
+            elif lang == "ZH":  # Taiwan Flag
                 pygame.draw.rect(screen, (220, 30, 30), (fx, fy, 22, 16))
                 pygame.draw.rect(screen, (30, 40, 160), (fx, fy, 11, 8))
                 pygame.draw.circle(screen, (255, 255, 255), (fx+5, fy+4), 3)
@@ -510,19 +508,19 @@ def select_mode(gui=None):
                     sys.exit()
                 if event.key == pygame.K_l:
                     i18n.cycle()
-                    f_title, f_icon, f_btn, f_small, buttons, s_rect, lang_btns, mode_icons = get_layout(screen)
+                    f_title, f_btn, f_small, buttons, s_rect, lang_btns, mode_icons = get_layout(screen)
 
             if event.type == pygame.VIDEORESIZE:
                 gui.handle_resize(event.w, event.h)
                 screen = gui.screen
-                f_title, f_icon, f_btn, f_small, buttons, s_rect, lang_btns, mode_icons = get_layout(screen)
+                f_title, f_btn, f_small, buttons, s_rect, lang_btns, mode_icons = get_layout(screen)
 
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 # Language click
                 for lang, rect in lang_btns.items():
                     if rect.collidepoint(event.pos):
                         i18n.set_lang(lang)
-                        f_title, f_icon, f_btn, f_small, buttons, s_rect, lang_btns, mode_icons = get_layout(screen)
+                        f_title, f_btn, f_small, buttons, s_rect, lang_btns, mode_icons = get_layout(screen)
                         break
 
                 # Slider click
@@ -535,6 +533,7 @@ def select_mode(gui=None):
                     if buttons[i].collidepoint(event.pos):
                         vs_mode = vs_options[current_vs_idx][1]
                         return run_game(m_id, vs_mode, gui)
+
 
 if __name__ == "__main__":
     gui = GUI(WINDOW_WIDTH, WINDOW_HEIGHT)
