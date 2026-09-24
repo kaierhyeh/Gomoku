@@ -7,10 +7,11 @@ from rules.rules import (in_bounds, has_five, has_any_five,
 
 
 class Game:
+    # 設立 state，這樣minimax運算時只需複製當前棋盤狀態來模擬走法，
+    # 而無須複製Game中函數、歷史紀錄、模式設定、道具清單等。
+    # 重構後速度提升73%。
     def __init__(self, rules=None, state=None, modifiers=None):
-        # 設立 state，這樣minimax運算時只需複製當前棋盤狀態來模擬走法，
-        # 而無須複製Game中函數、歷史紀錄、模式設定、道具清單等。
-        # 重構後速度提升73%。
+        """Initialize the game."""
         from core.state import GameState
         from core.modifiers import DecayModifier, ShootingStarModifier, PowerModifier
         self.rules = rules if rules is not None else get_rules_for_mode("Standard")
@@ -83,6 +84,7 @@ class Game:
 
     @property
     def render_hints(self):
+        """Aid: Render hints."""
         hints = {}
         for mod in self.modifiers:
             mod_hints = mod.get_render_hints(self.state)
@@ -93,6 +95,7 @@ class Game:
         return hints
 
     def _save_state(self):
+        """Save the current game state to history for undo functionality."""
         self.history.append({
             'board': [row[:] for row in self.board],
             'captures': self.captures.copy(),
@@ -110,6 +113,7 @@ class Game:
         })
 
     def undo(self):
+        """Undo the last move."""
         if not self.history:
             return False
         state = self.history.pop()
@@ -129,11 +133,22 @@ class Game:
         return True
 
     def _schedule_next_star(self):
+        """Schedule the next shooting star."""
         return self.ply_count + random.randint(STAR_MIN_PLY, STAR_MAX_PLY)
 
     def place_stone(self, row, col, player=None, power_type=None):
+        """
+        1. Place a stone
+        2. Activate an ability
+        3. Fill up a hole
+        4. Verify captures
+        5. Check for winner
+        6. Switch to the next player
+        """
         if player is None: player = self.current_player
-        if not self.is_valid_move(row, col, player): return False
+        if self.get_move_error(row, col, player): return False
+        # If has the attribute "history",
+        #     save the current state before making a move.
         if hasattr(self, 'history'): self._save_state()
 
         for mod in self.modifiers:
@@ -146,13 +161,13 @@ class Game:
         else:
             self.board[row][col] = player
             self.last_move = (row, col)
-            if self.rules.decay_enabled:
+            if self.rules.decay_enabled:  # Count ply for decay effect
                 self.stones_ply[(row, col)] = self.ply_count
 
             override = False
             for mod in self.modifiers:
                 if mod.on_stone_placed(self, self.state, row, col, player, power_type):
-                    override = True
+                    override = True  # 暫停吃子判斷
                     break
 
             if not override:
@@ -165,7 +180,7 @@ class Game:
             for mod in self.modifiers:
                 mod.on_turn_end(self, self.state)
 
-        self.current_player = WHITE if player == BLACK else BLACK
+        self.current_player = WHITE if player == BLACK else BLACK  # 交替玩家
         return True
 
     def get_move_error(self, row, col, player=None):
@@ -195,18 +210,22 @@ class Game:
 
         return None
 
-    def is_valid_move(self, row, col, player=None):
-        return self.get_move_error(row, col, player) is None
-
     def _apply_captures(self, row, col, player):
+        """Apply captures"""
         opponent = WHITE if player == BLACK else BLACK
         for dr, dc in DIRECTIONS:
             for sign in (1, -1):
                 r1, c1 = row + sign * dr, col + sign * dc
                 r2, c2 = row + sign * 2 * dr, col + sign * 2 * dc
                 r3, c3 = row + sign * 3 * dr, col + sign * 3 * dc
-                if (in_bounds(r1, c1, self.holes) and in_bounds(r2, c2, self.holes) and in_bounds(r3, c3, self.holes)
-                        and self.board[r1][c1] == opponent and self.board[r2][c2] == opponent and self.board[r3][c3] == player):
+                if (
+                    in_bounds(r1, c1, self.holes)
+                    and in_bounds(r2, c2, self.holes)
+                    and in_bounds(r3, c3, self.holes)
+                    and self.board[r1][c1] == opponent
+                    and self.board[r2][c2] == opponent
+                    and self.board[r3][c3] == player
+                ):
                     self.board[r1][c1] = EMPTY
                     self.board[r2][c2] = EMPTY
                     if self.rules.decay_enabled:
@@ -214,9 +233,6 @@ class Game:
                         self.stones_ply.pop((r2, c2), None)
                     self.captures[player] += 1
                     self.individual_captures[player] += 2
-
-    def get_captures(self, player):
-        return self.captures[player]
 
     def _can_opponent_break_or_win(self, player):
         """
@@ -227,6 +243,7 @@ class Game:
         opponent = WHITE if player == BLACK else BLACK
         opp_needs_one_pair = (self.captures[opponent] == MAX_CAPTURES - 1)
 
+        # Copy current board state
         winning_cells = set()
         for r in range(BOARD_SIZE):
             for c in range(BOARD_SIZE):
@@ -237,13 +254,21 @@ class Game:
         if not winning_cells:
             return False
 
-        # Check candidate opponent moves (only empty cells adjacent to player stones can form a capture of player)
+        # Check candidate opponent moves
+        # (only empty cells adjacent to player stones can form a capture)
         adj_candidates = set()
         for wr, wc in winning_cells:
-            for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)]:
+            for dr, dc in [
+                (-1, 0), (1, 0), (0, -1), (0, 1),
+                (-1, -1), (-1, 1), (1, -1), (1, 1)
+            ]:
                 nr, nc = wr + dr, wc + dc
-                if (0 <= nr < BOARD_SIZE and 0 <= nc < BOARD_SIZE and self.board[nr][nc] == EMPTY
-                        and (nr, nc) not in self.holes and (nr, nc) not in self.hole_forecast):
+                if (
+                    0 <= nr < BOARD_SIZE and 0 <= nc < BOARD_SIZE
+                    and self.board[nr][nc] == EMPTY
+                    and (nr, nc) not in self.holes
+                    and (nr, nc) not in self.hole_forecast
+                ):
                     adj_candidates.add((nr, nc))
 
         # If opponent needs 1 pair to win, they could capture anywhere adjacent to any player stone
@@ -251,10 +276,17 @@ class Game:
             for r in range(BOARD_SIZE):
                 for c in range(BOARD_SIZE):
                     if self.board[r][c] == player:
-                        for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)]:
+                        for dr, dc in [
+                            (-1, 0), (1, 0), (0, -1), (0, 1),
+                            (-1, -1), (-1, 1), (1, -1), (1, 1)
+                        ]:
                             nr, nc = r + dr, c + dc
-                            if (0 <= nr < BOARD_SIZE and 0 <= nc < BOARD_SIZE and self.board[nr][nc] == EMPTY
-                                    and (nr, nc) not in self.holes and (nr, nc) not in self.hole_forecast):
+                            if (
+                                0 <= nr < BOARD_SIZE and 0 <= nc < BOARD_SIZE
+                                and self.board[nr][nc] == EMPTY
+                                and (nr, nc) not in self.holes
+                                and (nr, nc) not in self.hole_forecast
+                            ):
                                 adj_candidates.add((nr, nc))
 
         for r, c in adj_candidates:
@@ -271,8 +303,14 @@ class Game:
                     r1, c1 = r + sign * dr, c + sign * dc
                     r2, c2 = r + sign * 2 * dr, c + sign * 2 * dc
                     r3, c3 = r + sign * 3 * dr, c + sign * 3 * dc
-                    if (in_bounds(r1, c1, self.holes) and in_bounds(r2, c2, self.holes) and in_bounds(r3, c3, self.holes)
-                            and self.board[r1][c1] == player and self.board[r2][c2] == player and self.board[r3][c3] == opponent):
+                    if (
+                        in_bounds(r1, c1, self.holes)
+                        and in_bounds(r2, c2, self.holes)
+                        and in_bounds(r3, c3, self.holes)
+                        and self.board[r1][c1] == player
+                        and self.board[r2][c2] == player
+                        and self.board[r3][c3] == opponent
+                    ):
                         captured_pairs.append(((r1, c1), (r2, c2)))
 
             for p1, p2 in captured_pairs:
@@ -294,6 +332,7 @@ class Game:
         return False
 
     def _check_winner(self, row, col, player):
+        """Check winner"""
         # 1. Win by 10 captures (5 pairs) - immediate win
         if self.captures[player] >= MAX_CAPTURES:
             self.pending_win = None
@@ -314,7 +353,8 @@ class Game:
 
         # 3. Check if current player just formed a five-in-a-row
         if has_five(self.board, row, col, player, self.holes):
-            # Endgame Capture rule: Can opponent break it or win by capture on their next turn?
+            # Endgame Capture rule:
+            #     Can opponent break it or win by capture on their next turn?
             if self._can_opponent_break_or_win(player):
                 self.pending_win = player
                 return None  # Give opponent 1 turn to counter
@@ -324,16 +364,11 @@ class Game:
 
         return None
 
-    def is_hole(self, row, col):
-        return (row, col) in self.holes
-
-    def get_board(self):
-        return self.board
-
     def is_game_over(self):
         return self.winner is not None
 
     def clone(self):
+        """Clone the game but only the state, not the history or modifiers."""
         from core.state import GameState
         new_state = GameState(
             rules=self.rules,
@@ -350,6 +385,6 @@ class Game:
             winner=self.state.winner,
             pending_win=self.state.pending_win,
             last_move=self.state.last_move,
-            history=[]  # don't clone history for AI sim
+            history=[]  # Don't clone history for AI sim
         )
         return Game(self.rules, new_state)

@@ -35,7 +35,7 @@ class TestGomokuRulesAndFixes(unittest.TestCase):
 
         # (9, 9) should be an illegal double free-three
         self.assertTrue(is_double_free_three(self.game.board, 9, 9, BLACK, self.game.holes))
-        self.assertFalse(self.game.is_valid_move(9, 9, BLACK))
+        self.assertEqual(self.game.get_move_error(9, 9, BLACK), "double_three")
 
     def test_double_free_three_broken(self):
         """Test broken double free-three: . X X . X . in two directions."""
@@ -49,7 +49,7 @@ class TestGomokuRulesAndFixes(unittest.TestCase):
         self.game.board[11][9] = BLACK
 
         self.assertTrue(is_double_free_three(self.game.board, 9, 9, BLACK, self.game.holes))
-        self.assertFalse(self.game.is_valid_move(9, 9, BLACK))
+        self.assertEqual(self.game.get_move_error(9, 9, BLACK), "double_three")
 
     def test_double_free_three_capture_exception(self):
         """
@@ -62,7 +62,7 @@ class TestGomokuRulesAndFixes(unittest.TestCase):
         self.game.board[10][9] = BLACK
 
         # Without capture, (9, 9) is forbidden
-        self.assertFalse(self.game.is_valid_move(9, 9, BLACK))
+        self.assertEqual(self.game.get_move_error(9, 9, BLACK), "double_three")
 
         # Now place a white pair flanked by (9, 9) and (9, 6):
         # (9, 9) Black (new), (9, 8) White, (9, 7) White, (9, 6) Black
@@ -75,7 +75,7 @@ class TestGomokuRulesAndFixes(unittest.TestCase):
         # Playing (9, 9) captures (10, 10) and (11, 11)
         self.assertTrue(would_capture(self.game.board, 9, 9, BLACK, self.game.holes))
         # Therefore, even though it introduces a double-three, it is ALLOWED by exception!
-        self.assertTrue(self.game.is_valid_move(9, 9, BLACK))
+        self.assertIsNone(self.game.get_move_error(9, 9, BLACK))
 
         # Placing the stone should succeed and apply the capture
         res = self.game.place_stone(9, 9, BLACK)
@@ -231,7 +231,7 @@ class TestGomokuRulesAndFixes(unittest.TestCase):
         # Only vertical is a free-three (1 direction).
         # Thus (9, 9) is NOT a double-three!
         self.assertFalse(is_double_free_three(self.game.board, 9, 9, BLACK, self.game.holes))
-        self.assertTrue(self.game.is_valid_move(9, 9, BLACK))
+        self.assertIsNone(self.game.get_move_error(9, 9, BLACK))
 
     def test_undo_restores_pending_win(self):
         """Test that undo correctly restores pending_win state."""
@@ -270,7 +270,7 @@ class TestGomokuRulesAndFixes(unittest.TestCase):
         # AI should return a valid move without crashing
         move = ai.get_best_move(self.game)
         self.assertIsNotNone(move)
-        self.assertTrue(self.game.is_valid_move(move[0], move[1], WHITE))
+        self.assertIsNone(self.game.get_move_error(move[0], move[1], WHITE))
 
     def test_heuristic_quick_score_open_ends(self):
         """Verify that open ends are evaluated correctly (dead four scores 0, open four scores 100k)."""
@@ -365,7 +365,6 @@ class TestGomokuRulesAndFixes(unittest.TestCase):
         self.game.board[4][5] = BLACK
         self.game.board[6][5] = BLACK
         self.assertEqual(self.game.get_move_error(5, 5, BLACK), "double_three")
-        self.assertFalse(self.game.is_valid_move(5, 5, BLACK))
 
         # 5. Hole forecast
         self.game.hole_forecast[(3, 3)] = 10

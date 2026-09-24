@@ -6,22 +6,33 @@ import random
 
 class GameModifier:
     def on_turn_start(self, game: 'Game', state: GameState):
-        pass
+        """Turn start trigger"""
+        pass  # General template for modifiers to override
 
     def on_stone_placed(self, game: 'Game', state: GameState, row: int, col: int, player: int, power_type: str = None) -> bool:
         """Return True if this modifier overrides normal stone placement."""
         return False
 
     def on_turn_end(self, game: 'Game', state: GameState):
+        """
+        Turn end trigger:
+        Apply special effects, decay, shooting star, etc.
+        This is called after the stone is placed and captures are resolved.
+        """
         pass
 
     def get_render_hints(self, state: GameState) -> Dict[Tuple[int, int], Dict[str, Any]]:
         """Return a mapping of (row, col) to dictionary of drawing hints."""
         return {}
+# 用 game: 'Game' 而不是 import Game 是為了避免循環引用：
+# 因 game.py 已 form core.modifiers import ...
+
 
 class DecayModifier(GameModifier):
     def on_turn_end(self, game: 'Game', state: GameState):
+        """Apply decay effects to stones."""
         if not game.rules.decay_enabled: return
+
         expired = []
         for (r, c), ply_placed in state.stones_ply.items():
             if state.ply_count - ply_placed >= DECAY_LIFESPAN:
@@ -31,8 +42,10 @@ class DecayModifier(GameModifier):
             del state.stones_ply[(r, c)]
 
     def get_render_hints(self, state: GameState) -> Dict[Tuple[int, int], Dict[str, Any]]:
+        """Generate hints for decay mode."""
         hints = {}
         if not state.rules.decay_enabled: return hints
+
         for (r, c), ply_placed in state.stones_ply.items():
             rem = DECAY_LIFESPAN - (state.ply_count - ply_placed)
             if rem <= DECAY_WARN_THRESHOLD:
@@ -42,6 +55,7 @@ class DecayModifier(GameModifier):
                 if (r, c) not in hints: hints[(r, c)] = {}
                 hints[(r, c)]["cracked"] = True
         return hints
+
 
 class ShootingStarModifier(GameModifier):
     def on_turn_end(self, game: 'Game', state: GameState):
@@ -104,8 +118,10 @@ class ShootingStarModifier(GameModifier):
             hints[(r, c)]["hole_forecast"] = rem
         return hints
 
+
 class PowerModifier(GameModifier):
     def on_stone_placed(self, game: 'Game', state: GameState, row: int, col: int, player: int, power_type: str = None) -> bool:
+        """Handle special power effects."""
         if not game.rules.power_stones or not power_type: return False
 
         opponent = WHITE if player == BLACK else BLACK
@@ -118,17 +134,17 @@ class PowerModifier(GameModifier):
                     if dr == 0 and dc == 0: continue
                     r, c = row+dr, col+dc
                     if 0 <= r < BOARD_SIZE and 0 <= c < BOARD_SIZE and state.board[r][c] != EMPTY:
-                        cleared.append((r,c))
+                        cleared.append((r, c))
         elif power_type == POWER_CROSS:
-            for d in [-2,-1,1,2]:
+            for d in [-2, -1, 1, 2]:
                 for r, c in [(row+d, col), (row, col+d)]:
                     if 0 <= r < BOARD_SIZE and 0 <= c < BOARD_SIZE and state.board[r][c] == opponent:
-                        cleared.append((r,c))
+                        cleared.append((r, c))
         elif power_type == POWER_DIAGONAL:
-            for d in [-2,-1,1,2]:
+            for d in [-2, -1, 1, 2]:
                 for r, c in [(row+d, col+d), (row+d, col-d)]:
                     if 0 <= r < BOARD_SIZE and 0 <= c < BOARD_SIZE and state.board[r][c] == opponent:
-                        cleared.append((r,c))
+                        cleared.append((r, c))
 
         for r, c in cleared:
             state.board[r][c] = EMPTY
@@ -144,4 +160,4 @@ class PowerModifier(GameModifier):
         if state.individual_captures[player] >= 5:
             state.individual_captures[player] = max(0, state.individual_captures[player] - 5)
 
-        return True # Handled placement
+        return True

@@ -68,8 +68,14 @@ def would_capture(board, row, col, player, holes):
             r1, c1 = row + sign * dr, col + sign * dc
             r2, c2 = row + sign * 2 * dr, col + sign * 2 * dc
             r3, c3 = row + sign * 3 * dr, col + sign * 3 * dc
-            if (in_bounds(r1, c1, holes) and in_bounds(r2, c2, holes) and in_bounds(r3, c3, holes)
-                    and board[r1][c1] == opponent and board[r2][c2] == opponent and board[r3][c3] == player):
+            if (
+                in_bounds(r1, c1, holes)
+                and in_bounds(r2, c2, holes)
+                and in_bounds(r3, c3, holes)
+                and board[r1][c1] == opponent
+                and board[r2][c2] == opponent
+                and board[r3][c3] == player
+            ):
                 return True
     return False
 
@@ -92,7 +98,8 @@ def is_double_free_three(board, row, col, player, holes):
     for dr, dc in DIRECTIONS:
         line = []
         # 從某方向正反採樣各五格
-        for i in range(-5, 6):  # range(start, exclusive stop): -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5
+        # range(start, exclusive stop): -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5
+        for i in range(-5, 6):
             r, c = row + i * dr, col + i * dc
             if in_bounds(r, c, holes):
                 line.append((i, board[r][c]))
@@ -101,7 +108,8 @@ def is_double_free_three(board, row, col, player, holes):
 
         for start in range(len(line) - 5):
             window = line[start:start + 6]
-            cells = tuple(cell for _, cell in window)  # 把 iterator 的 i 拿掉，只留棋子資訊
+            # 把 iterator 的 i 拿掉，只留棋子資訊
+            cells = tuple(cell for _, cell in window)
             if cells in free_three_patterns:
                 if 0 in [offset for offset, cell in window if cell == player]:
                     count += 1
