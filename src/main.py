@@ -12,6 +12,7 @@ from core.game import Game
 from ai.ai import AI
 from ai.heuristic import _score_player
 from ui.gui import GUI, _load_font
+from ui.gui import GUI, _load_font, _load_emoji_font
 from rules.bonus import get_rules_for_mode
 
 MODE_AI    = "ai"
@@ -327,6 +328,8 @@ def select_mode(gui=None):
         f_title = _load_font(max(16, int(32 * scale)), bold=True)
         # We MUST use a specific font list that contains Emojis (prioritizing notoemoji/symbola over colrv1)
         f_icon  = pygame.font.SysFont("notoemoji,symbola,segoeuiemoji,applecoloremoji,dejavusans,freesans", max(30, int(42 * scale)))
+        # Load bundled NotoEmoji font so menu icons look identical on all machines
+        f_icon  = _load_emoji_font(max(30, int(42 * scale)))
         f_btn   = _load_font(max(12, int(18 * scale)), bold=True)
         f_small = _load_font(max(12, int(14 * scale)), bold=True)
 

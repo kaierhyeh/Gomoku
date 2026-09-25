@@ -38,6 +38,28 @@ def _load_font(size, bold=False):
     return pygame.font.SysFont("dejavusans", size, bold=bold)
 
 
+def _load_emoji_font(size):
+    """
+    Load the bundled NotoEmoji font so menu emoji icons render identically
+    across all machines regardless of system-installed emoji libraries.
+    """
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    emoji_paths = [
+        os.path.join(base_dir, "assets", "fonts", "NotoEmoji-Regular.ttf"),
+        "/usr/share/fonts/google-noto-emoji-fonts/NotoEmoji-Regular.ttf",
+        "/usr/share/fonts/truetype/noto/NotoEmoji-Regular.ttf",
+    ]
+    for path in emoji_paths:
+        if os.path.exists(path):
+            try:
+                return pygame.font.Font(path, size)
+            except Exception:
+                pass
+    return pygame.font.SysFont(
+        "notoemoji,symbola,segoeuiemoji,applecoloremoji,dejavusans,freesans", size
+    )
+
+
 class GUI:
     """
     Pygame graphical interface for Gomoku.
