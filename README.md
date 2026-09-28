@@ -51,11 +51,7 @@ make
 ```
 
 ### Font Dependencies (Linux)
-The mode selection menu utilizes Unicode symbols and emojis. On Linux (Ubuntu / Debian), install `fonts-symbola` to enable native emoji glyph rendering:
-```bash
-sudo apt update && sudo apt install -y fonts-symbola
-```
-> **Note**: If your system font lacks specific newer Unicode emojis (such as `🪫` or `🪄`), the UI seamlessly activates built-in hand-crafted vector graphics as a fallback.
+The repository directly bundles all required fonts (`NotoSansTC-Regular.otf` and `NotoEmoji-Regular.ttf`) under `assets/fonts/`. No additional system font packages (such as `fonts-symbola`) are required!
 
 ## 🛠️ Usage
 
@@ -126,11 +122,7 @@ make
 ```
 
 ### 系統字體相依 (Linux)
-模式選擇選單使用到了 Unicode 符號與 Emoji 圖示。在 Linux (Ubuntu / Debian) 系統下，建議安裝 `fonts-symbola` 符號字體：
-```bash
-sudo apt update && sudo apt install -y fonts-symbola
-```
-> **提示**：若本機字體未收錄特定較新版 Unicode 表情（如 `🪫` 或 `🪄`），遊戲 UI 會自動切換至內建的手繪向量圖形，達成降級，不會顯示方框亂碼。
+專案已於 `assets/fonts/` 完整內建中文字型 (`NotoSansTC-Regular.otf`) 與 Emoji 圖示字型 (`NotoEmoji-Regular.ttf`)，開箱即用，無需手動於系統安裝額外字型（如 `fonts-symbola`）！
 
 ## 🛠️ 使用方式
 

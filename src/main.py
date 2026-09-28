@@ -201,6 +201,12 @@ def run_game(mode_name=MODE_STANDARD, vs_mode=MODE_AI, gui=None):
                     # Aide button click
                     if gui.check_aide_click(event.pos):
                         aide_on = not aide_on
+                        if not aide_on:
+                            suggestion = None
+                            gui.aide_timer = 0
+                        elif vs_mode == MODE_HUMAN and not game.is_game_over():
+                            suggestion = ai_suggestion_engine.suggest_move(game)
+                            gui.set_status(i18n.get("suggest"))
                         continue
 
                     # Guide button click
@@ -241,8 +247,11 @@ def run_game(mode_name=MODE_STANDARD, vs_mode=MODE_AI, gui=None):
                                 threading.Thread(target=compute_ai_move, daemon=True).start()
                                 gui.set_status(f'{i18n.get("ai_thinking")} (Depth: 10)')
                             elif vs_mode == MODE_HUMAN:
-                                suggestion = ai_suggestion_engine.suggest_move(game)
-                                gui.set_status(i18n.get("suggest"))
+                                if aide_on:
+                                    suggestion = ai_suggestion_engine.suggest_move(game)
+                                    gui.set_status(i18n.get("suggest"))
+                                else:
+                                    suggestion = None
                         else:
                             # Move was invalid: diagnose reason and show user warning
                             err = game.get_move_error(row, col, game.current_player)
@@ -290,7 +299,7 @@ def run_game(mode_name=MODE_STANDARD, vs_mode=MODE_AI, gui=None):
 
         # ── Render (single flip inside gui.draw) ─────────
         curr_p_type = power_types[power_idx] if power_active else None
-        gui.draw(game, ai_time, vs_mode, suggestion, aide_on,
+        gui.draw(game, ai_time, vs_mode, suggestion if aide_on else None, aide_on,
                  power_type=curr_p_type, power_hover=gui.hover_pos if power_active else None)
         clock.tick(60)
 
@@ -326,8 +335,6 @@ def select_mode(gui=None):
         w, h = screen.get_size()
         scale   = min(w / WINDOW_WIDTH, h / WINDOW_HEIGHT)
         f_title = _load_font(max(16, int(32 * scale)), bold=True)
-        # We MUST use a specific font list that contains Emojis (prioritizing notoemoji/symbola over colrv1)
-        f_icon  = pygame.font.SysFont("notoemoji,symbola,segoeuiemoji,applecoloremoji,dejavusans,freesans", max(30, int(42 * scale)))
         # Load bundled NotoEmoji font so menu icons look identical on all machines
         f_icon  = _load_emoji_font(max(30, int(42 * scale)))
         f_btn   = _load_font(max(12, int(18 * scale)), bold=True)

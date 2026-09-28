@@ -85,8 +85,6 @@ STRINGS = {
             "• Stone Lifespan:\n"
             "  - Every stone placed has a limited lifespan of 10 turns.\n"
             "  - Stones gradually age and fade, vanishing when expired!\n"
-            "• Tactical Tip:\n"
-            "  - Strike swiftly before your constructed winning lines dissolve!"
         ),
         "guide_Power": (
             "[Power Stones Mode]\n"
@@ -126,8 +124,6 @@ STRINGS = {
             "  1. 🪫 Decay: Stones fade and vanish after 10 turns.\n"
             "  2. 🪄 Power Stones: Capture 5 stones to unlock Bomb, Cross & Diag!\n"
             "  3. 🌠 Shooting Star: Meteors create craters & color-flipping stones!\n"
-            "• Tactical Tip:\n"
-            "  - Balance rapid attacks, power stones, and vanishing chains to win!"
         ),
     },
     "FR": {
@@ -202,8 +198,6 @@ STRINGS = {
             "• Durée de Vie des Pierres :\n"
             "  - Chaque pierre posée a une durée de vie limitée à 10 tours.\n"
             "  - Les pierres vieillissent et disparaissent automatiquement !\n"
-            "• Conseil Tactique :\n"
-            "  - Attaquez vite avant que vos alignements gagnants ne s'effacent !"
         ),
         "guide_Power": (
             "[Mode Pierres de Pouvoir]\n"
@@ -243,8 +237,6 @@ STRINGS = {
             "  1. 🪫 Décadence : Les pierres s'effacent après 10 tours.\n"
             "  2. 🪄 Pierres de Pouvoir : 5 captures débloquent Bombe, Croix & Diag !\n"
             "  3. 🌠 Étoile Filante : Cratères de météores et pierres qui changent de couleur !\n"
-            "• Conseil Tactique :\n"
-            "  - Jonglez entre attaques vives, pouvoirs et pierres éphémères pour vaincre !"
         ),
     },
     "ZH": {
@@ -318,8 +310,6 @@ STRINGS = {
             "• 棋子壽命限制：\n"
             "  - 盤面上落下的每顆棋子皆有 10 回合的有效壽命。\n"
             "  - 棋子會隨著時間逐漸風化褪色，到達 10 回合後會自動從棋盤上消失！\n"
-            "• 戰術提示：\n"
-            "  - 把握進攻節奏，若拖延太久，已構建的連線優勢將化為烏有！"
         ),
         "guide_Power": (
             "[超能石模式]\n"
@@ -357,8 +347,6 @@ STRINGS = {
             "  1. 🪫 風化機制：每顆落下的棋子在 10 回合後會自動消散。\n"
             "  2. 🪄 超能石機制：吃滿 5 顆子可解鎖使用炸彈 (*)、十字 (+) 與斜向 (X) 毀滅技能！\n"
             "  3. 🌠 流星機制：宇宙天體隨機墜落，砸出隕石坑或落下變色石！\n"
-            "• 戰術提示：\n"
-            "  - 在瞬息萬變的棋盤上，必須同時兼顧快速進攻、技能釋放與消失時間才能存活獲勝！"
         ),
     },
 }

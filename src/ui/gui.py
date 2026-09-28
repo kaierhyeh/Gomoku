@@ -60,6 +60,33 @@ def _load_emoji_font(size):
     )
 
 
+def _split_text_and_emojis(text):
+    """
+    Split a string into alternating segments of (substring, is_emoji),
+    allowing dual-font rendering (e.g., CJK font for text and NotoEmoji for symbols).
+    """
+    if not text:
+        return []
+    chunks = []
+    curr = []
+    curr_is_emoji = None
+    for c in text:
+        cp = ord(c)
+        emoji_flag = (0x1F000 <= cp <= 0x1FAFF or 0x2600 <= cp <= 0x27BF or cp in (0xFE0E, 0xFE0F))
+        if curr_is_emoji is None:
+            curr_is_emoji = emoji_flag
+            curr.append(c)
+        elif emoji_flag == curr_is_emoji:
+            curr.append(c)
+        else:
+            chunks.append(("".join(curr), curr_is_emoji))
+            curr = [c]
+            curr_is_emoji = emoji_flag
+    if curr:
+        chunks.append(("".join(curr), curr_is_emoji))
+    return chunks
+
+
 class GUI:
     """
     Pygame graphical interface for Gomoku.
@@ -104,6 +131,13 @@ class GUI:
         self.font_title = _load_font(max(16, int(28 * scale)), bold=True)
         self.font_med   = _load_font(max(12, int(20 * scale)), bold=True)
         self.font_small = _load_font(max(10, int(15 * scale)), bold=True)
+        try:
+            self.font_emoji_small = _load_emoji_font(max(10, int(15 * scale)))
+            f_hole = _load_emoji_font(max(16, int(28 * scale)))
+            self._hole_surf = f_hole.render("🕳️", True, (45, 30, 18))
+        except Exception:
+            self.font_emoji_small = None
+            self._hole_surf = None
 
     def handle_resize(self, new_w, new_h):
         self.win_w = max(new_w, 600)
@@ -244,7 +278,7 @@ class GUI:
         if power_type and power_hover and not game.is_game_over():
             self._draw_power_preview(game, power_type, power_hover, cell, margin)
 
-        if suggestion and not game.is_game_over():
+        if suggestion and not game.is_game_over() and aide_on:
             self._draw_suggestion(suggestion, cell)
 
         self._draw_panel(game, ai_time, mode, aide_on, power_type)
@@ -327,18 +361,15 @@ class GUI:
 
     def _draw_holes(self, game, cell, margin):
         stone_r = max(4, cell // 2 - 2)
-        # Permanent holes
+        # Permanent holes: rendered directly with the 🕳️ emoji matching the guide
         for r, c in game.holes:
             x = margin + c * cell
             y = margin + r * cell
-            # Light grey fill, lighter border
-            pygame.gfxdraw.filled_circle(self.screen, x, y, stone_r, (180, 180, 180))
-            pygame.gfxdraw.aacircle(self.screen, x, y, stone_r, (210, 210, 210))
-            # Bold multiplication sign (U+2715)
-            fnt = self.font_med
-            cross = fnt.render("✕", True, (120, 120, 120))
-            cross_rect = cross.get_rect(center=(x, y))
-            self.screen.blit(cross, cross_rect)
+            if getattr(self, '_hole_surf', None):
+                self.screen.blit(self._hole_surf, self._hole_surf.get_rect(center=(x, y)))
+            else:
+                pygame.gfxdraw.filled_circle(self.screen, x, y, stone_r, (55, 38, 24))
+                pygame.gfxdraw.aacircle(self.screen, x, y, stone_r, (35, 24, 15))
 
         # Hole Forecasts: same highlight style as blipping stones, but no stone in center.
         hints_cache = game.render_hints
@@ -484,6 +515,18 @@ class GUI:
         pygame.draw.rect(self.screen, (255, 90, 90), rect, 2, border_radius=6)
         self.screen.blit(txt, txt.get_rect(center=rect.center))
 
+    def _get_mixed_line_width(self, text):
+        """Measure width of a line that may mix regular text and emojis."""
+        if not text:
+            return 0
+        if not getattr(self, 'font_emoji_small', None):
+            return self.font_small.size(text)[0]
+        total_w = 0
+        for chunk, is_e in _split_text_and_emojis(text):
+            f = self.font_emoji_small if is_e else self.font_small
+            total_w += f.size(chunk)[0]
+        return total_w
+
     def _draw_guide_overlay(self):
         """Render an informative guide overlay in the center of the screen."""
         # Create semi-transparent overlay
@@ -502,14 +545,14 @@ class GUI:
             if not stripped:
                 rendered_lines.append("")
                 continue
-            if self.font_small.size(stripped)[0] <= max_text_w:
+            if self._get_mixed_line_width(stripped) <= max_text_w:
                 rendered_lines.append(stripped)
             else:
                 words = stripped.split(' ')
                 curr = ""
                 for w in words:
                     test_l = f"{curr} {w}".strip() if curr else w
-                    if self.font_small.size(test_l)[0] <= max_text_w:
+                    if self._get_mixed_line_width(test_l) <= max_text_w:
                         curr = test_l
                     else:
                         if curr:
@@ -537,8 +580,9 @@ class GUI:
         title_surf = self.font_med.render(i18n.get("guide_title"), True, (230, 150, 60))
         self.screen.blit(title_surf, (box_x + 22, box_y + 16))
 
-        # Guide text
+        # Guide text with dual-font mixed rendering
         y_offset = box_y + 54
+        base_h = self.font_small.get_height()
         for line in rendered_lines:
             if line:
                 # Color highlights: headers & bullets warm gold, body soft warm white
@@ -548,8 +592,16 @@ class GUI:
                     col = (235, 220, 200)
                 else:
                     col = (215, 205, 185)
-                txt_surf = self.font_small.render(line, True, col)
-                self.screen.blit(txt_surf, (box_x + 22, y_offset))
+
+                cur_x = box_x + 22
+                for chunk, is_e in _split_text_and_emojis(line):
+                    f = self.font_emoji_small if (is_e and getattr(self, 'font_emoji_small', None)) else self.font_small
+                    chunk_surf = f.render(chunk, True, col)
+                    # Vertically center-align emojis with the text line
+                    c_y = y_offset + (base_h - chunk_surf.get_height()) // 2
+                    self.screen.blit(chunk_surf, (cur_x, c_y))
+                    cur_x += chunk_surf.get_width()
+
             y_offset += line_h
 
         # Close hint at bottom
