@@ -1,19 +1,28 @@
 import os
+# ∵ no audio, use dummy audio driver to avoid pygame error
 os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 import pygame
 import sys
 import threading
 import math
 from ui import i18n
-from config.game import (BLACK, WHITE, MODE_STANDARD, MODE_DECAY, MODE_POWER, MODE_STAR, MODE_LIMITLESS, MODE_EVERYTHING)
+from config.game import (
+    BLACK, WHITE,
+    MODE_STANDARD,
+    MODE_DECAY,
+    MODE_POWER,
+    MODE_STAR,
+    MODE_LIMITLESS,
+    MODE_EVERYTHING
+)
 from config.ui import (WINDOW_WIDTH, WINDOW_HEIGHT)
 from config.bonus import (POWER_BOMB, POWER_CROSS, POWER_DIAGONAL)
 from core.game import Game
 from ai.ai import AI
 from ai.heuristic import _score_player
-from ui.gui import GUI, _load_font
 from ui.gui import GUI, _load_font, _load_emoji_font
 from rules.bonus import get_rules_for_mode
+
 
 MODE_AI    = "ai"
 MODE_HUMAN = "human"
@@ -96,7 +105,11 @@ def run_game(mode_name=MODE_STANDARD, vs_mode=MODE_AI, gui=None):
                     # Undo Move
                     if game.history and not ai_thinking:
                         success = False
-                        if vs_mode == MODE_AI and len(game.history) >= 2 and game.current_player == BLACK:
+                        if (
+                            vs_mode == MODE_AI and
+                            len(game.history) >= 2 and
+                            game.current_player == BLACK
+                        ):
                             game.undo()  # Pop AI move
                             game.undo()  # Pop Human move
                             success = True
@@ -129,7 +142,10 @@ def run_game(mode_name=MODE_STANDARD, vs_mode=MODE_AI, gui=None):
                     gui.set_status(i18n.get("language") + ": " + i18n.current())
 
                 # Power stones rotation shortcuts: Tab to cycle, 1/2/3 to select directly
-                if game.rules.power_stones and game.individual_captures.get(game.current_player, 0) >= 5:
+                if (
+                    game.rules.power_stones and
+                    game.individual_captures.get(game.current_player, 0) >= 5
+                ):
                     if event.key == pygame.K_TAB:
                         power_idx = (power_idx + 1) % len(power_types)
                         power_active = True
@@ -151,7 +167,10 @@ def run_game(mode_name=MODE_STANDARD, vs_mode=MODE_AI, gui=None):
                 gui.update_hover(event.pos)
 
             if event.type == pygame.MOUSEWHEEL:
-                if game.rules.power_stones and game.individual_captures.get(game.current_player, 0) >= 5:
+                if (
+                    game.rules.power_stones and
+                    game.individual_captures.get(game.current_player, 0) >= 5
+                ):
                     power_idx = (power_idx - event.y) % len(power_types)
                     power_active = True
                     gui.set_status(i18n.get("power_" + power_types[power_idx]))
@@ -164,7 +183,10 @@ def run_game(mode_name=MODE_STANDARD, vs_mode=MODE_AI, gui=None):
                     continue
 
                 if event.button == 3:  # Right click
-                    if game.rules.power_stones and game.individual_captures.get(game.current_player, 0) >= 5:
+                    if (
+                        game.rules.power_stones and
+                        game.individual_captures.get(game.current_player, 0) >= 5
+                    ):
                         # In PvP, allow both black and white to activate power
                         power_active = not power_active
                         if power_active:
@@ -290,7 +312,10 @@ def run_game(mode_name=MODE_STANDARD, vs_mode=MODE_AI, gui=None):
             opponent = WHITE if game.current_player == BLACK else BLACK
 
             # Show Aide if it's PvP, OR if it's vs AI and it's currently the human's turn (BLACK)
-            if vs_mode == MODE_HUMAN or (vs_mode == MODE_AI and game.current_player == BLACK):
+            if (
+                vs_mode == MODE_HUMAN or
+                (vs_mode == MODE_AI and game.current_player == BLACK)
+            ):
                 opp_score = _score_player(game.board, opponent, 0)
                 if opp_score >= 10000:
                     gui.show_aide_popup("UNO!", 3000)
@@ -351,7 +376,12 @@ def select_mode(gui=None):
         btns = []
         for i in range(2):
             for j in range(3):
-                rect = pygame.Rect(start_x + j * (btn_w + gap_x), start_y + i * (btn_h + gap_y), btn_w, btn_h)
+                rect = pygame.Rect(
+                    start_x + j * (btn_w + gap_x),
+                    start_y + i * (btn_h + gap_y),
+                    btn_w,
+                    btn_h
+                )
                 btns.append(rect)
 
         # Slider rect below title, above grid
@@ -373,7 +403,6 @@ def select_mode(gui=None):
             for m_id, icon_txt in mode_options:
                 try:
                     if m_id == MODE_STANDARD:
-                        # Left stone matches the style and outline curve of right stone (⚪) but filled with the lighter color
                         s_right = f_icon.render("⚪", True, (255, 220, 120))
                         iw, ih = s_right.get_size()
                         s_left = pygame.Surface((iw, ih), pygame.SRCALPHA)
@@ -414,16 +443,37 @@ def select_mode(gui=None):
         # Slider rendering
         pygame.draw.rect(screen, (50, 40, 30), s_rect, border_radius=20)
         s_hovered = s_rect.collidepoint(mx, my)
-        slider_half = pygame.Rect(s_rect.x if current_vs_idx == 0 else s_rect.x + s_rect.width//2,
-                                  s_rect.y, s_rect.width//2, s_rect.height)
-        pygame.draw.rect(screen, (200, 130, 50) if not s_hovered else (220, 150, 70), slider_half, border_radius=20)
+        slider_half = pygame.Rect(
+            s_rect.x if current_vs_idx == 0 else s_rect.x + s_rect.width // 2,
+            s_rect.y,
+            s_rect.width // 2,
+            s_rect.height
+        )
+        pygame.draw.rect(
+            screen,
+            (200, 130, 50) if not s_hovered else (220, 150, 70),
+            slider_half,
+            border_radius=20
+        )
         pygame.draw.rect(screen, (100, 80, 50), s_rect, 2, border_radius=20)
 
         # Slider texts
-        ltxt = f_btn.render("AI", True, (40, 20, 10) if current_vs_idx == 0 else (150, 140, 120))
-        rtxt = f_btn.render("PvP", True, (40, 20, 10) if current_vs_idx == 1 else (150, 140, 120))
-        screen.blit(ltxt, ltxt.get_rect(center=(s_rect.x + s_rect.width//4, s_rect.centery)))
-        screen.blit(rtxt, rtxt.get_rect(center=(s_rect.x + 3*s_rect.width//4, s_rect.centery)))
+        ltxt = f_btn.render(
+            "AI",
+            True,
+            (40, 20, 10) if current_vs_idx == 0 else (150, 140, 120)
+        )
+        rtxt = f_btn.render(
+            "PvP",
+            True,
+            (40, 20, 10) if current_vs_idx == 1 else (150, 140, 120)
+        )
+        screen.blit(ltxt, ltxt.get_rect(
+            center=(s_rect.x + s_rect.width // 4, s_rect.centery))
+        )
+        screen.blit(rtxt, rtxt.get_rect(
+            center=(s_rect.x + 3 * s_rect.width // 4, s_rect.centery))
+        )
 
         # Mode buttons (3x2 grid)
         for i, (m_id, _) in enumerate(mode_options):
@@ -446,17 +496,37 @@ def select_mode(gui=None):
                     pygame.draw.circle(screen, (255, 220, 120), (ix+12, iy), 9, 2)
                 elif m_id == MODE_DECAY:
                     # 🪫 Battery Icon
-                    pygame.draw.rect(screen, (100, 100, 100), (ix-12, iy-6, 24, 12), 2, border_radius=2)
+                    pygame.draw.rect(
+                        screen,
+                        (100, 100, 100),
+                        (ix-12, iy-6, 24, 12),
+                        2,
+                        border_radius=2
+                    )
                     pygame.draw.rect(screen, (100, 100, 100), (ix+12, iy-3, 3, 6))
-                    pygame.draw.rect(screen, (200, 50, 50), (ix-10, iy-4, 5, 8))  # Low charge red
+                    # Low charge red
+                    pygame.draw.rect(screen, (200, 50, 50), (ix-10, iy-4, 5, 8))
                 elif m_id == MODE_POWER:
                     # 🪄 Magic Wand
-                    pygame.draw.line(screen, (100, 70, 50), (ix-10, iy+10), (ix+5, iy-5), 4)  # handle
-                    pygame.draw.circle(screen, (255, 255, 255), (ix+8, iy-8), 4)  # tip
-                    pygame.draw.circle(screen, (255, 255, 0), (ix+8, iy-8), 6, 1)  # glow
+                    # handle
+                    pygame.draw.line(
+                        screen,
+                        (100, 70, 50),
+                        (ix-10, iy+10),
+                        (ix+5, iy-5),
+                        4
+                    )
+                    # tip
+                    pygame.draw.circle(screen, (255, 255, 255), (ix+8, iy-8), 4)
+                    # glow
+                    pygame.draw.circle(screen, (255, 255, 0), (ix+8, iy-8), 6, 1)
                 elif m_id == MODE_STAR:
                     # 🌠 Shooting Star
-                    pygame.draw.polygon(screen, (255, 150, 50), [(ix-5, iy+5), (ix-25, iy+20), (ix-10, iy+30), (ix, iy+10)])
+                    pygame.draw.polygon(
+                        screen,
+                        (255, 150, 50),
+                        [(ix-5, iy+5), (ix-25, iy+20), (ix-10, iy+30), (ix, iy+10)]
+                    )
                     pts = []
                     for j in range(10):
                         rr = 12 if j % 2 == 0 else 5
@@ -480,7 +550,12 @@ def select_mode(gui=None):
         for lang, rect in lang_btns.items():
             active  = (lang == i18n.current())
             hovered = rect.collidepoint(mx, my)
-            bg      = (200, 130, 50) if active else ((85, 62, 25) if hovered else (55, 42, 25))
+            if active:
+                bg = (200, 130, 50)
+            elif hovered:
+                bg = (85, 62, 25)
+            else:
+                bg = (55, 42, 25)
             border  = (255, 200, 80) if active else (95, 72, 42)
             pygame.draw.rect(screen, bg, rect, border_radius=5)
             pygame.draw.rect(screen, border, rect, 1, border_radius=5)
@@ -488,11 +563,14 @@ def select_mode(gui=None):
             # Manually Draw Flag before Text to guarantee visibility
             fx, fy = rect.x + 8, rect.centery - 8
             if lang == "EN":  # US Flag
-                pygame.draw.rect(screen, (200, 50, 50), (fx, fy, 22, 16))  # base red
-                pygame.draw.rect(screen, (255, 255, 255), (fx, fy+2, 22, 3))  # stripes
+                # base red
+                pygame.draw.rect(screen, (200, 50, 50), (fx, fy, 22, 16))
+                # stripes
+                pygame.draw.rect(screen, (255, 255, 255), (fx, fy+2, 22, 3))
                 pygame.draw.rect(screen, (255, 255, 255), (fx, fy+7, 22, 3))
                 pygame.draw.rect(screen, (255, 255, 255), (fx, fy+12, 22, 3))
-                pygame.draw.rect(screen, (50, 50, 150), (fx, fy, 11, 8))  # blue canton
+                # blue canton
+                pygame.draw.rect(screen, (50, 50, 150), (fx, fy, 11, 8))
             elif lang == "FR":  # France Flag
                 pygame.draw.rect(screen, (40, 80, 180), (fx, fy, 7, 16))
                 pygame.draw.rect(screen, (255, 255, 255), (fx+7, fy, 8, 16))
@@ -502,7 +580,11 @@ def select_mode(gui=None):
                 pygame.draw.rect(screen, (30, 40, 160), (fx, fy, 11, 8))
                 pygame.draw.circle(screen, (255, 255, 255), (fx+5, fy+4), 3)
 
-            lsurf = f_small.render(i18n.LANG_LABELS.get(lang, lang), True, (235, 225, 210))
+            lsurf = f_small.render(
+                i18n.LANG_LABELS.get(lang, lang),
+                True,
+                (235, 225, 210)
+            )
             screen.blit(lsurf, lsurf.get_rect(midleft=(fx + 28, rect.centery)))
 
         pygame.display.flip()
@@ -518,19 +600,43 @@ def select_mode(gui=None):
                     sys.exit()
                 if event.key == pygame.K_l:
                     i18n.cycle()
-                    f_title, f_btn, f_small, buttons, s_rect, lang_btns, mode_icons = get_layout(screen)
+                    (
+                        f_title,
+                        f_btn,
+                        f_small,
+                        buttons,
+                        s_rect,
+                        lang_btns,
+                        mode_icons
+                    ) = get_layout(screen)
 
             if event.type == pygame.VIDEORESIZE:
                 gui.handle_resize(event.w, event.h)
                 screen = gui.screen
-                f_title, f_btn, f_small, buttons, s_rect, lang_btns, mode_icons = get_layout(screen)
+                (
+                    f_title,
+                    f_btn,
+                    f_small,
+                    buttons,
+                    s_rect,
+                    lang_btns,
+                    mode_icons
+                ) = get_layout(screen)
 
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 # Language click
                 for lang, rect in lang_btns.items():
                     if rect.collidepoint(event.pos):
                         i18n.set_lang(lang)
-                        f_title, f_btn, f_small, buttons, s_rect, lang_btns, mode_icons = get_layout(screen)
+                        (
+                            f_title,
+                            f_btn,
+                            f_small,
+                            buttons,
+                            s_rect,
+                            lang_btns,
+                            mode_icons
+                        ) = get_layout(screen)
                         break
 
                 # Slider click
