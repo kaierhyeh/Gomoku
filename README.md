@@ -19,7 +19,7 @@ This project explores adversarial search, heuristic design, and the balance betw
 ## ✨ Features
 
 - **Full 19×19 Board**: Standard Go board, no stone limit.
-- **Minimax + Alpha-Beta Pruning**: Adversarial search with efficient branch cutting.
+- **Minimax Algorithm + Alpha-Beta Pruning**: Stemmed from game theory, "Minimax" comes from the order of mathematical operations: Assuming the opponent always makes the responses that minimize our gain, we choose the move that maximizes our gain. Alpha-Beta Pruning is a tree search algorithm designed to optimize the Minimax algorithm.
 - **Pattern-based Heuristic**: Recognizes Open Four, Closed Four, Open Three, and more.
 - **Capture Rule (Ninuki-renju)**: Flank a pair of opponent stones to remove them. Capture 10 stones to win.
 - **Double Free-Three Ban**: Moves that simultaneously create two free-three alignments are forbidden.
@@ -90,7 +90,8 @@ The repository directly bundles all required fonts (`NotoSansTC-Regular.otf` and
 ## ✨ 核心特點
 
 - **完整 19×19 棋盤**：在標準圍棋盤上進行，無落子數量限制。
-- **Minimax + Alpha-Beta 剪枝**：博弈搜尋演算法，高效裁剪無效分支。
+- **Minimax 演算法 + Alpha-Beta 剪枝**：
+    Minimax 的概念源於賽局理論，名稱來自數學的運算順序：假設對手總是做對我們最不利的選擇，我們從中選則能讓自己獲益最多的行動。而專為其設計的 Alpha-Beta 剪枝搜尋演算法，用於裁剪無效分支。
 - **棋型辨識啟發式**：自動辨識關鍵棋型（活四、死四、活三等），精準評估盤面價值。
 - **吃子規則 (Ninuki-renju)**：以夾擊方式吃掉對手的一對棋子。吃滿 10 子即獲勝。
 - **禁手：雙活三**：禁止同時製造兩個活三的走法。

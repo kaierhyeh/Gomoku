@@ -1,3 +1,69 @@
+"""
+Gomoku Heuristic Evaluation Module
+==================================
+
+Overview
+--------
+This module provides static board evaluation and incremental move scoring for
+the Gomoku AI engine. It models game mechanics including five-in-a-row victory
+conditions, tactical line shapes (open fours, threes, twos), and Pente-style
+pair capture mechanics (2-stone captures and 10-stone capture win).
+
+Architecture & Workflow
+-----------------------
+1. Full-Board Static Evaluation (evaluate_board):
+   - Minimax leaf evaluation: Computes AI_score - Opponent_score (zero-sum relative advantage).
+   - Scans all 4 directions non-redundantly to aggregate sequence scores and captured pair bonuses.
+
+2. Pattern Classification & Scoring (_score_sequence, _classify_pattern):
+   - Maps continuous stone chains and open ends into heuristic pattern scores.
+   - Evaluates: Five (1,000,000), Open Four (100,000), Closed Four (10,000),
+     Open Three (5,000), Closed Three (500), Open Two (100), Closed Two (10).
+   - Prunes dead patterns (both ends blocked) with score 0.
+
+3. Capture Mechanics (_count_captures_for_scoring):
+   - Checks 4 directions for sandwich capture patterns (player - opponent - opponent - player).
+   - Tracks 2-stone pair removals and triggers instant victory upon reaching 5 pairs (10 stones).
+
+4. Quick Move Scoring & Prioritization (quick_score_move):
+   - Local O(1) radial evaluation around candidate move (row, col) for Alpha-Beta move ordering.
+   - Tier 1 (10,000,000+): Current player instant win via five-in-a-row or 10-stone capture.
+   - Tier 2 (5,000,000 - 7,000,000): Critical defense against opponent five-in-a-row or 10-stone capture win.
+   - Tier 3 (< 1,000,000): Tactical combinations (open four, double three, forks) with 1.05x offensive weighting.
+
+================================================================================
+Gomoku 啟發式評估模組
+
+概覽
+--------
+本模組提供五子棋 AI 引擎所需的靜態盤面評估（Static Board Evaluation）與
+局部走步啟發式評分（Incremental Move Scoring）。邏輯涵蓋傳統五子連珠獲勝條件、
+直線棋型（活四、衝四、活三、眠三、活二等），以及 Pente 規則中的夾吃機制
+（夾吃 2 顆子與累計夾吃滿 10 顆子直接獲勝）。
+
+架構與工作流程
+--------------
+1. 全盤靜態評估 (evaluate_board)：
+   - Minimax 葉節點評估：計算 AI_score - Opponent_score（相對淨優勢）。
+   - 沿四個方向向量進行不重複掃描，累加所有連續棋型分數與吃子獎勵。
+
+2. 棋型辨識與評分 (_score_sequence, _classify_pattern)：
+   - 依連續棋子長度與兩端開放狀態（open ends）映射為啟發式分數。
+   - 分級評分：連五（1,000,000）、活四（100,000）、衝四（10,000）、
+     活三（5,000）、眠三（500）、活二（100）、眠二（10）。
+   - 兩端皆受阻之死棋型直接賦予 0 分。
+
+3. 夾吃判定機制 (_count_captures_for_scoring)：
+   - 檢查四個方向上的夾吃結構（我-敵-敵-我）。
+   - 追蹤吃子進度，若累計夾吃滿 5 對（10 顆子）即達成夾吃獲勝條件。
+
+4. 快速走步排序與分層優先權 (quick_score_move)：
+   - 針對候選座標 (row, col) 進行 O(1) 局部輻射掃描，專供 Alpha-Beta 走步排序。
+   - 第一層級 (10,000,000+)：我方連五或吃滿 10 顆直接絕殺。
+   - 第二層級 (5,000,000 - 7,000,000)：對手即時獲勝威脅防守（防連五或防吃滿 10 顆）。
+   - 第三層級 (< 1,000,000)：常規戰術棋型組合（活四、雙三等），包含 1.05x 進攻加權。
+"""
+
 from config.game import BOARD_SIZE, EMPTY, BLACK, WHITE, DIRECTIONS
 from config.ai import SCORE
 
@@ -5,8 +71,13 @@ from config.ai import SCORE
 def evaluate_board(board, captures, player):
     """
     Full board heuristic evaluation from a given player's perspective.
-    Returns: AI_score - Opponent_score
-    Combined offense + defense scoring.
+    Input:
+        1. board: The current game board.
+        2. captures: A dictionary of captured stones for each player.
+        3. player: The player for whom to evaluate the board.
+
+    Return:
+        AI_score - Opponent_score
     """
     opponent = WHITE if player == BLACK else BLACK
     ai_score = _score_player(board, player, captures.get(player, 0))
@@ -15,7 +86,17 @@ def evaluate_board(board, captures, player):
 
 
 def _score_player(board, player, captured_pairs):
-    """Sum up all pattern scores across all directions for a given player."""
+    """
+    Sum up all pattern scores across all directions for a given player.
+
+    Input:
+        1. board: The current game board.
+        2. player: The player whose stones are being evaluated.
+        3. captured_pairs: Number of pairs already captured by this player.
+
+    Return:
+        Total heuristic score for the player.
+    """
     total = 0
 
     # Bonus for captures already made (each pair captured is progress toward win)
@@ -38,6 +119,17 @@ def _score_sequence(board, row, col, dr, dc, player):
     """
     Analyze a single stone sequence starting at (row, col) in direction (dr, dc).
     Classifies and scores it based on pattern type.
+
+    Input:
+        1. board: The current game board.
+        2. row: The starting row of the sequence.
+        3. col: The starting column of the sequence.
+        4. dr: Row direction increment (delta row).
+        5. dc: Column direction increment (delta column).
+        6. player: The player whose stones are being evaluated.
+
+    Return:
+        Heuristic score for the identified sequence pattern.
     """
     length = 0
     r, c = row, col
@@ -95,9 +187,18 @@ def _count_captures_for_scoring(board, row, col, player):
 
 def quick_score_move(board, row, col, player, captures):
     """
-    Lightweight evaluation of placing a stone at (row, col).
+    Lightweight evaluation of placing a stone at (row, col)
     Used for move ordering before full Minimax recursion.
-    Returns: combined score for the player and opponent (to rank candidate moves).
+
+    Input:
+        1. board: The current game board.
+        2. row: The row of the move.
+        3. col: The column of the move.
+        4. player: The player placing the stone.
+        5. captures: A dictionary of captured stones for each player.
+
+    Return:
+        Combined score for the player and opponent (to rank candidate moves).
     """
     opponent = WHITE if player == BLACK else BLACK
     score = 0
@@ -157,7 +258,10 @@ def quick_score_move(board, row, col, player, captures):
 
 
 def _scan_line_score(board, row, col, dr, dc, player):
-    """Count consecutive player stones in one direction through (row, col) with open-end validation."""
+    """
+    Count consecutive player stones in one direction through (row, col)
+    with open-end validation.
+    """
     count = 1
     open_ends = 0
 
